@@ -10,6 +10,8 @@ var RoonApi          = require("node-roon-api"),
 
 var _output_id = "";
 var ikea_devices = new Array;
+var tradfri_connection
+var first_run
 
 var roon = new RoonApi({
     extension_id:        'dk.hagenjohansen.roontradfri',
@@ -63,17 +65,26 @@ function makelayout(settings) {
              layout:    [],
              has_error: false
     };
-    l.layout.push({
-                    type:    "zone",
-                    title:   "Zone",
-                    setting: "outputid",
-                  });
-    l.layout.push({
-    type:    "dropdown",
-    title:   "IkeaPlug",
-    values:  ikea_devices,
-    setting: "ikeaplug",
-    });
+    if( first_run ) {
+        l.layout.push({
+	    type: "string",
+	    title: "Ikea gateway secret key(Never stored)",
+	    setting: "ikeagwkey",
+	})
+    }
+    else {
+        l.layout.push({
+            type:    "zone",
+            title:   "Zone",
+            setting: "outputid",
+        });
+        l.layout.push({
+        type:    "dropdown",
+        title:   "IkeaPlug",
+        values:  ikea_devices,
+        setting: "ikeaplug",
+        });
+    }
 
     return l;
 }
@@ -84,20 +95,25 @@ var svc_settings = new RoonApiSettings(roon, {
     },
     save_settings: function(req, isdryrun, settings) {
         if (req.body.settings) {
-            if (req.body.settings.values) {
+            if ( (req.body.settings.values) && (!first_run) ) {
                 _output_id = req.body.settings.values["outputid"]["output_id"];
             }
-        }    
+        }
 
         let l = makelayout(settings.values);
         req.send_complete(l.has_error ? "NotValid" : "Success", { settings: l });
 
-        if (!isdryrun && !l.has_error) {
+        if (!first_run && !l.has_error) {
             _mysettings = l.values;
             svc_settings.update_settings(l);
             roon.save_config("settings", _mysettings);
 	    update_status();
         }
+	else {
+	    IkeaConnection.getConnection(l.values['ikeagwkey'])
+	    svc_status.set_status("Not Configured");
+	    
+	}
     }
 });
 
@@ -109,36 +125,45 @@ roon.init_services({
 });
 
 function update_status() {
-    device_name = ikea_devices.filter(device => {
-	return device.value === _mysettings.ikeaplug
-    })[0]
-    svc_status.set_status(_mysettings.outputid.name + " set to: " + device_name.title, false);
+    if ( (typeof(_mysettings.outputid) != "undefined") && (_mysettings.ikeaplug != null) ) {
+        device_name = ikea_devices.filter(device => {
+	    return device.value === _mysettings.ikeaplug
+        })[0]
+        svc_status.set_status(_mysettings.outputid.name + " set to: " + device_name.title, false);
+    }
+    else {
+	svc_status.set_status("First run. Please update settings");
+    }
 }
 
 const get_ikea_devices = async () => {
     const tradfri = await IkeaConnection.getConnection();
-    tradfri.observeDevices();
-    await Delay(1000)
-    for (const deviceId in tradfri.devices) {
-        const device = tradfri.devices[deviceId];
-	DeviceObj = new Object()
-	DeviceObj.title = device.name
-	DeviceObj.value = deviceId
-	ikea_devices.push(DeviceObj)
+    if ( tradfri == false ) {
+	first_run = true
     }
-    tradfri.destroy()
-    return ikea_devices
+    else {
+	first_run = false
+        tradfri.observeDevices();
+        await Delay(500)
+        for (const deviceId in tradfri.devices) {
+            const device = tradfri.devices[deviceId];
+	    DeviceObj = new Object()
+	    DeviceObj.title = device.name
+	    DeviceObj.value = deviceId
+	    if (typeof(device.plugList) != "undefined") {
+	        ikea_devices.push(DeviceObj)
+	    }
+        }
+        tradfri_connection = tradfri
+    }
 }
 
 const turn_ikea_device = async (cmd,deviceid) => {
-    const tradfri = await IkeaConnection.getConnection();
-    tradfri.observeDevices();
-    await Delay(1000)
-    for(const deviceId in tradfri.devices) {
+    for(const deviceId in tradfri_connection.devices) {
 	if(deviceId === deviceid) {
-	    device = tradfri.devices[deviceId];
+	    device = tradfri_connection.devices[deviceId];
 	    accessory = device.plugList[0]
-	    accessory.client = tradfri
+	    accessory.client = tradfri_connection
 	    if (cmd == "ON") {
 		accessory.turnOn()
 	    }
@@ -160,3 +185,4 @@ get_ikea_devices().then( () => {
     update_status();
 })
 //turn_ikea_device("OFF","65545");
+

@@ -6,7 +6,7 @@ const path              = require( 'path' );
 const conf = new Conf();
 const { discoverGateway, TradfriClient } = NodeTradfriClient;
 
-async function getConnection() {
+async function getConnection(gwcode) {
   console.log( "Looking up IKEA Tradfri gateway on your network" )
   let gateway = await discoverGateway()
 
@@ -19,10 +19,10 @@ async function getConnection() {
   const tradfri = new TradfriClient(gateway.host)
 
   if( !conf.has( 'security.identity' ) || !conf.has('security.psk' ) ) {
-    let securityCode = process.env.IKEASECURITY
+    let securityCode = gwcode
     if( securityCode === "" || securityCode === undefined ) {
-      console.log( "Please set the IKEASECURITY env variable to the code on the back of the gateway")
-      process.exit(1)
+      console.log( "For first time run make sure to set proper gateway security code(bottom of gateway device)")
+      return false
     }
 
     console.log( "Getting identity from security code" )
