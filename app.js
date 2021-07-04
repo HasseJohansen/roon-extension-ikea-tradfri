@@ -173,16 +173,7 @@ const turn_ikea_device = async (cmd,deviceid) => {
 	}
     }
 }
-
-
-//get_ikea_devices();
-//roon.start_discovery();
-//update_status();
-//get_ikea_devices()
-
 get_ikea_devices().then( () => {
     roon.start_discovery();
     update_status();
 })
-//turn_ikea_device("OFF","65545");
-
