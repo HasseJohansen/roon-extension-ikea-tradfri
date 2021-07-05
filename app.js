@@ -29,7 +29,7 @@ var roon = new RoonApi({
                     data.zones_changed.forEach(zone => {
                         zone.outputs.forEach(output => {
                             if (output.output_id == _mysettings.outputid.output_id) {
-				if (zone.state == ("playing" || "loading") {
+				if ((zone.state == "playing") || (zone.state == "loading")) {
 				    console.log('Turning ON IKEA device');
 				    turn_ikea_device("ON", _mysettings.ikeaplug)
 				}
