@@ -4,6 +4,13 @@ This is extension for roon to be able to switch Ikea Trådfri power
 switches ex. when using an external Power Amplifier or powered
 speakers which doesn't have a auto standby feature
 
+A great deal of appreciation goes to:
+
+https://github.com/TheAppgineer (for the extension manager and
+plugins) and
+
+https://github.com/AlCalzone (for the node-tradfri-client library)
+
 ------------
 ## Roon Extension Manager
 The recommended way to install or update is via the [Roon Extension Manager](https://github.com/TheAppgineer/roon-extension-manager/wiki/Installation).
