@@ -16,7 +16,7 @@ var first_run
 var roon = new RoonApi({
     extension_id:        'dk.hagenjohansen.roontradfri',
     display_name:        "Roon Tradfri",
-    display_version:     "0.0.3",
+    display_version:     "0.0.4",
     publisher:           'Hasse Hagen Johansen',
     email:               'hasse-roon@hagenjohansen.dk',
     website:             'https://github.com/HasseJohansen/roon-extension-ikea-tradfri',
@@ -173,7 +173,18 @@ const turn_ikea_device = async (cmd,deviceid) => {
 	}
     }
 }
+init_signal_handlers()
 get_ikea_devices().then( () => {
     roon.start_discovery();
     update_status();
 })
+
+function init_signal_handlers() {
+    const handle = function(signal) {
+        process.exit(0);
+    };
+
+    // Register signal handlers to enable a graceful stop of the container
+    process.on('SIGTERM', handle);
+    process.on('SIGINT', handle);
+}

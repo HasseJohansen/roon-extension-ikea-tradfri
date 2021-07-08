@@ -1,0 +1,30 @@
+# Set the AUTHOR variable to the name you want to be presented with to the user
+AUTHOR="Hasse Hagen Johansen"
+
+# Set the extension ID to a string that uniquely identifies your extension, e.g. based on an internet domain you own
+EXTENSION_ID=dk.1mx.roon-tradfri
+
+# Set the NAME variable to the name of your extension
+NAME=roon-extension-ikea-tradfri
+
+# Set the FRIENDLY_NAME variable to a more readable name for your extension
+FRIENDLY_NAME="Roon Tradfri"
+
+# Set the DESCRIPTION variable to a single line string that summarizes the function of your extension
+DESCRIPTION="Roon Extension to control an IKEA Tradfri Plug to turn power on/off depending on Roon Zone playing state"
+
+# Set the VERSION variable to the version number of your extension
+VERSION=0.0.4
+
+# Set the EMAIL variable to the address that users can use for support questions
+EMAIL=hasse-roon@1mx.dk
+
+# Set the WEBSITE variable to the location where more information about your extension can be found
+# This can be your website, a Roon Community forum post, the GitHub respository of your extension, etc.
+WEBSITE=https://github.com/HasseJohansen/roon-extension-ikea-tradfri
+
+# Set the MAIN_FILE variable to the main source file of your extension
+MAIN_FILE=app.js
+
+# Set the USER variable to your Docker Hub account name
+USER=hassejohansen
