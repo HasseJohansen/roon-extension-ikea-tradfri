@@ -1,5 +1,3 @@
-//"use strict"
-
 var RoonApi          = require("node-roon-api"),
     RoonApiStatus    = require("node-roon-api-status"),
     RoonApiTransport = require("node-roon-api-transport"),
@@ -7,16 +5,17 @@ var RoonApi          = require("node-roon-api"),
     IkeaConnection   = require( './connection' ),
     IkeaDevices      = require( './devices' ),
     Delay            = require( 'delay' );
+const fs = require('fs')
 
 var _output_id = "";
 var ikea_devices = new Array;
-var tradfri_connection
-var first_run
+var tradfri
+var first_run = false
 
 var roon = new RoonApi({
     extension_id:        'dk.hagenjohansen.roontradfri',
     display_name:        "Roon Tradfri",
-    display_version:     "0.0.4",
+    display_version:     "0.0.5",
     publisher:           'Hasse Hagen Johansen',
     email:               'hasse-roon@hagenjohansen.dk',
     website:             'https://github.com/HasseJohansen/roon-extension-ikea-tradfri',
@@ -65,14 +64,17 @@ function makelayout(settings) {
              layout:    [],
              has_error: false
     };
-    if( first_run ) {
+    if( first_run == true ) {
+	do_not_log()
         l.layout.push({
 	    type: "string",
-	    title: "Ikea gateway secret key(Never stored)",
+	    title: "Ikea gateway secret key",
 	    setting: "ikeagwkey",
 	})
     }
     else {
+        delete l.values.ikeagwkey;
+	log()
         l.layout.push({
             type:    "zone",
             title:   "Zone",
@@ -85,7 +87,6 @@ function makelayout(settings) {
         setting: "ikeaplug",
         });
     }
-
     return l;
 }
 
@@ -95,7 +96,7 @@ var svc_settings = new RoonApiSettings(roon, {
     },
     save_settings: function(req, isdryrun, settings) {
         if (req.body.settings) {
-            if ( (req.body.settings.values) && (!first_run) ) {
+            if ( (req.body.settings.values["outputid"]) && (first_run == false) ) {
                 _output_id = req.body.settings.values["outputid"]["output_id"];
             }
         }
@@ -103,16 +104,18 @@ var svc_settings = new RoonApiSettings(roon, {
         let l = makelayout(settings.values);
         req.send_complete(l.has_error ? "NotValid" : "Success", { settings: l });
 
-        if (!first_run && !l.has_error) {
-            _mysettings = l.values;
+        if (!l.has_error && first_run == false) {
+	    delete l.values.ikeagwkey;
+	    _mysettings = l.values;
             svc_settings.update_settings(l);
             roon.save_config("settings", _mysettings);
 	    update_status();
         }
 	else {
-	    IkeaConnection.getConnection(l.values['ikeagwkey'])
-	    svc_status.set_status("Not Configured");
-	    
+	    first_run = false;
+	    get_ikea_devices(l.values['ikeagwkey']).then( () => {
+		svc_status.set_status("Not Configured");
+	    })
 	}
     }
 });
@@ -136,34 +139,37 @@ function update_status() {
     }
 }
 
-const get_ikea_devices = async () => {
-    const tradfri = await IkeaConnection.getConnection();
-    if ( tradfri == false ) {
-	first_run = true
+const get_ikea_devices = async (gwkey="undefined") => {
+    tradfri = await IkeaConnection.getConnection()
+    if (typeof(tradfri) != "object" && gwkey != "undefined") {
+	tradfri = await IkeaConnection.getConnection(gwkey)
+    }
+    if (typeof(tradfri) != "object") {
+        first_run = true;
     }
     else {
-	first_run = false
-        tradfri.observeDevices();
-        await Delay(500)
-        for (const deviceId in tradfri.devices) {
+	tradfri = await IkeaConnection.getConnection(gwkey)
+	tradfri.observeDevices();
+	await Delay(500)
+	for (const deviceId in tradfri.devices) {
             const device = tradfri.devices[deviceId];
-	    DeviceObj = new Object()
+            DeviceObj = new Object()
 	    DeviceObj.title = device.name
 	    DeviceObj.value = deviceId
 	    if (typeof(device.plugList) != "undefined") {
-	        ikea_devices.push(DeviceObj)
+		ikea_devices.push(DeviceObj)
 	    }
         }
-        tradfri_connection = tradfri
+	tradfri = tradfri;
     }
 }
 
 const turn_ikea_device = async (cmd,deviceid) => {
-    for(const deviceId in tradfri_connection.devices) {
+    for(const deviceId in tradfri.devices) {
 	if(deviceId === deviceid) {
-	    device = tradfri_connection.devices[deviceId];
+	    device = tradfri.devices[deviceId];
 	    accessory = device.plugList[0]
-	    accessory.client = tradfri_connection
+	    accessory.client = tradfri
 	    if (cmd == "ON") {
 		accessory.turnOn()
 	    }
@@ -172,6 +178,16 @@ const turn_ikea_device = async (cmd,deviceid) => {
 	    }
 	}
     }
+}
+
+function do_not_log() {
+    logger = process.stdout.write
+    var dev_null = fs.createWriteStream('/dev/null');
+    process.stdout.write = dev_null.write.bind(dev_null);
+}
+function log() {
+    var dev_stdout = fs.createWriteStream('/dev/stdout');
+    process.stdout.write = dev_stdout.write.bind(dev_stdout);
 }
 init_signal_handlers()
 get_ikea_devices().then( () => {

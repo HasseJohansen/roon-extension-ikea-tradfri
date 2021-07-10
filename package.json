@@ -1,6 +1,6 @@
 {
     "name": "roon-extension-ikea-tradfri",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "Roon Extension for switching IKEA Trådfri smart switches",
     "main": "app.js",
     "author": "Hasse Hagen Johansen",
@@ -8,6 +8,7 @@
     "dependencies": {
         "conf": "^10.0.1",
         "delay": "^5.0.0",
+	"fs": "",
         "node-roon-api": "github:roonlabs/node-roon-api",
         "node-roon-api-settings": "github:roonlabs/node-roon-api-settings",
         "node-roon-api-status": "github:roonlabs/node-roon-api-status",
