@@ -16,7 +16,7 @@ async function getConnection(gwcode) {
   }
 
   console.log( "Connecting to", gateway.host)
-  const tradfri = new TradfriClient(gateway.host)
+  const tradfri = new TradfriClient(gateway.addresses[0])
 
   if( !conf.has( 'security.identity' ) || !conf.has('security.psk' ) ) {
     let securityCode = gwcode
