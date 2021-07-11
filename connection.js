@@ -3,7 +3,7 @@ const delay             = require('delay');
 const NodeTradfriClient = require("node-tradfri-client");
 const path              = require( 'path' );
 
-const conf = new Conf();
+const conf = new Conf({"cwd": "."});
 const { discoverGateway, TradfriClient } = NodeTradfriClient;
 
 async function getConnection(gwcode) {
