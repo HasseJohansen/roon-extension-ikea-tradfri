@@ -1,9 +1,9 @@
-const Conf              = require('conf');
+const appConfig = require('@anujdatar/appconfig')
 const delay             = require('delay');
 const NodeTradfriClient = require("node-tradfri-client");
 const path              = require( 'path' );
 
-const conf = new Conf({"cwd": "."});
+const conf = new appConfig({"configDir": "."});
 const { discoverGateway, TradfriClient } = NodeTradfriClient;
 
 async function getConnection(gwcode) {

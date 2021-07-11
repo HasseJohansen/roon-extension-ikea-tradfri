@@ -15,7 +15,7 @@ var first_run = false
 var roon = new RoonApi({
     extension_id:        'dk.hagenjohansen.roontradfri',
     display_name:        "Roon Tradfri",
-    display_version:     "0.0.8",
+    display_version:     "0.0.9",
     publisher:           'Hasse Hagen Johansen',
     email:               'hasse-roon@hagenjohansen.dk',
     website:             'https://github.com/HasseJohansen/roon-extension-ikea-tradfri',
