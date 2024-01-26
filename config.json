@@ -1,0 +1,16 @@
+{
+    "roonstate": {
+        "tokens": {
+            "b2a2182b-717f-46f0-b4b5-14ffaa690105": "cc171f23-4bd6-4501-af42-6a8d409d5dd7"
+        },
+        "paired_core_id": "b2a2182b-717f-46f0-b4b5-14ffaa690105"
+    },
+    "settings": {
+        "zone": null,
+        "ikeaplug": "65545",
+        "outputid": {
+            "output_id": "17019e3eb37559cefb3702a7d9c13b3216bc",
+            "name": "Soveværelse"
+        }
+    }
+}
