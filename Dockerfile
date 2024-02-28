@@ -1,6 +1,4 @@
-ARG build_arch=amd64
-
-FROM multiarch/alpine:${build_arch}-v3.12
+FROM multiarch/alpine:3.19.1
 
 RUN addgroup -g 1000 node && adduser -u 1000 -G node -s /bin/sh -D node && apk add --no-cache nodejs
 
