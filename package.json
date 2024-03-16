@@ -1,6 +1,7 @@
 {
     "name": "roon-extension-ikea-tradfri",
-    "version": "0.0.9",
+    "type": "module",
+    "version": "0.0.14",
     "description": "Roon Extension for switching IKEA Trådfri smart switches",
     "main": "app.js",
     "author": "Hasse Hagen Johansen",

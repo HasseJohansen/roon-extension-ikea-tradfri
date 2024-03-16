@@ -1,7 +1,7 @@
 import delay from 'delay';
-const appConfig = require('@anujdatar/appconfig')
-const NodeTradfriClient = require("node-tradfri-client");
-const path              = require( 'path' );
+import appConfig from '@anujdatar/appconfig'
+import * as  NodeTradfriClient from "node-tradfri-client"
+import * as path from 'path' 
 
 const conf = new appConfig({"configDir": "."});
 const { discoverGateway, TradfriClient } = NodeTradfriClient;
@@ -38,19 +38,4 @@ async function getConnection(gwcode) {
   return tradfri;
 }
 
-module.exports = {getConnection: getConnection};
-
-// Only run this method if invoked with "node connection.js"
-if( __filename === process.argv[1] ) {
-  (async () => {
-    const tradfri = await getConnection();
-    console.log( "Connection complete" )
-
-    console.log( "Waiting 1 second")
-    await delay( 1000 )
-
-    console.log( "Closing connection")
-    tradfri.destroy()
-    process.exit(0);
-  })()
-}
+export default {getConnection: getConnection};

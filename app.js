@@ -1,11 +1,11 @@
 import delay from 'delay';
-var RoonApi          = require("node-roon-api"),
-    RoonApiStatus    = require("node-roon-api-status"),
-    RoonApiTransport = require("node-roon-api-transport"),
-    RoonApiSettings  = require('node-roon-api-settings'),
-    IkeaConnection   = require( './connection' ),
-    IkeaDevices      = require( './devices' ),
-const fs = require('fs')
+import RoonApi from "node-roon-api"
+import RoonApiStatus from "node-roon-api-status"
+import RoonApiTransport from "node-roon-api-transport"
+import RoonApiSettings from 'node-roon-api-settings'
+import IkeaConnection from './connection.js' 
+import IkeaDevices from './devices.js' 
+import fs from 'fs'
 
 var _output_id = "";
 var ikea_devices = new Array;
@@ -15,7 +15,7 @@ var first_run = false
 var roon = new RoonApi({
     extension_id:        'dk.hagenjohansen.roontradfri',
     display_name:        "Roon Tradfri",
-    display_version:     "0.0.9",
+    display_version:     "0.0.14",
     publisher:           'Hasse Hagen Johansen',
     email:               'hasse-roon@hagenjohansen.dk',
     website:             'https://github.com/HasseJohansen/roon-extension-ikea-tradfri',
@@ -129,7 +129,7 @@ roon.init_services({
 
 function update_status() {
     if ( (typeof(_mysettings.outputid) != "undefined") && (_mysettings.ikeaplug != null) ) {
-        device_name = ikea_devices.filter(device => {
+        var device_name = ikea_devices.filter(device => {
 	    return device.value === _mysettings.ikeaplug
         })[0]
         svc_status.set_status(_mysettings.outputid.name + " set to: " + device_name.title, false);
@@ -153,7 +153,7 @@ const get_ikea_devices = async (gwkey="undefined") => {
 	await delay(500)
 	for (const deviceId in tradfri.devices) {
             const device = tradfri.devices[deviceId];
-            DeviceObj = new Object()
+            var DeviceObj = new Object()
 	    DeviceObj.title = device.name
 	    DeviceObj.value = deviceId
 	    if (typeof(device.plugList) != "undefined") {
@@ -167,8 +167,8 @@ const get_ikea_devices = async (gwkey="undefined") => {
 const turn_ikea_device = async (cmd,deviceid) => {
     for(const deviceId in tradfri.devices) {
 	if(deviceId === deviceid) {
-	    device = tradfri.devices[deviceId];
-	    accessory = device.plugList[0]
+	    var device = tradfri.devices[deviceId];
+	    var accessory = device.plugList[0]
 	    accessory.client = tradfri
 	    if (cmd == "ON") {
 		accessory.turnOn()
@@ -181,7 +181,7 @@ const turn_ikea_device = async (cmd,deviceid) => {
 }
 
 function do_not_log() {
-    logger = process.stdout.write
+    var logger = process.stdout.write
     var dev_null = fs.createWriteStream('/dev/null');
     process.stdout.write = dev_null.write.bind(dev_null);
 }

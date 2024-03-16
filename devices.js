@@ -1,5 +1,5 @@
 import delay from 'delay';
-const connection = require( './connection' );
+import * as connection from './connection.js'
 
 function printDeviceInfo( device ) {
   switch( device.type ) {
@@ -43,24 +43,4 @@ function findDevice( tradfri, deviceNameOrId ) {
   return;
 }
 
-module.exports = {printDeviceInfo, findDevice};
-
-// Only run this method if invoked with "node devices.js"
-if( __filename === process.argv[1] ) {
-  (async () => {
-    const tradfri = await connection.getConnection();
-
-    tradfri.observeDevices();
-
-    // Wait a second hopefully something will be loaded by then!
-    await delay( 1000 )
-
-    for (const deviceId in tradfri.devices ) {
-      const device = tradfri.devices[deviceId];
-      printDeviceInfo( device )
-    }
-
-    tradfri.destroy()
-    process.exit(0);
-  })()
-}
+export default {printDeviceInfo, findDevice};
