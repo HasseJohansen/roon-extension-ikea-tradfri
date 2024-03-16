@@ -1,5 +1,5 @@
 const appConfig = require('@anujdatar/appconfig')
-const delay             = require('delay');
+const delay             = import('delay');
 const NodeTradfriClient = require("node-tradfri-client");
 const path              = require( 'path' );
 

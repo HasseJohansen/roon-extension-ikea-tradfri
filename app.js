@@ -4,7 +4,7 @@ var RoonApi          = require("node-roon-api"),
     RoonApiSettings  = require('node-roon-api-settings'),
     IkeaConnection   = require( './connection' ),
     IkeaDevices      = require( './devices' ),
-    Delay            = require( 'delay' );
+    Delay            = import( 'delay' );
 const fs = require('fs')
 
 var _output_id = "";

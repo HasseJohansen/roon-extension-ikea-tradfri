@@ -1,5 +1,5 @@
 const connection = require( './connection' );
-const delay      = require( 'delay' );
+const delay      = import( 'delay' );
 
 function printDeviceInfo( device ) {
   switch( device.type ) {
