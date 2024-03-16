@@ -1,10 +1,10 @@
+import delay from 'delay';
 var RoonApi          = require("node-roon-api"),
     RoonApiStatus    = require("node-roon-api-status"),
     RoonApiTransport = require("node-roon-api-transport"),
     RoonApiSettings  = require('node-roon-api-settings'),
     IkeaConnection   = require( './connection' ),
     IkeaDevices      = require( './devices' ),
-    Delay            = import( 'delay' );
 const fs = require('fs')
 
 var _output_id = "";
@@ -150,7 +150,7 @@ const get_ikea_devices = async (gwkey="undefined") => {
     else {
 	tradfri = await IkeaConnection.getConnection(gwkey)
 	tradfri.observeDevices();
-	await Delay(500)
+	await delay(500)
 	for (const deviceId in tradfri.devices) {
             const device = tradfri.devices[deviceId];
             DeviceObj = new Object()
