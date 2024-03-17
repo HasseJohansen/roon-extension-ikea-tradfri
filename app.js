@@ -150,7 +150,7 @@ const get_ikea_devices = async (gwkey="undefined") => {
     else {
 	tradfri = await IkeaConnection.getConnection(gwkey)
 	tradfri.observeDevices();
-	await delay(500)
+	await delay(5000)
 	for (const deviceId in tradfri.devices) {
             const device = tradfri.devices[deviceId];
             var DeviceObj = new Object()
