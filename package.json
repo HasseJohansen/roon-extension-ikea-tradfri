@@ -8,7 +8,7 @@
     "license": "Apache-2.0",
     "dependencies": {
         "@anujdatar/appconfig": "^2.2.0",
-        "delay": "^6.0.0",
+        "delay": "^7.0.0",
         "bonjour-service": "^1.2.1",
         "fs": "",
         "node-roon-api": "github:roonlabs/node-roon-api",
