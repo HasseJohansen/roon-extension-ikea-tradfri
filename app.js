@@ -191,6 +191,12 @@ function log() {
 }
 init_signal_handlers()
 get_ikea_devices().then( () => {
+    // Load persisted pairing state before discovery
+    let roonstate = roon.load_config("roonstate") || {};
+    if (roonstate.paired_core_id) {
+        roon.paired_core_id = roonstate.paired_core_id;
+        roon.is_paired = true;
+    }
     roon.start_discovery();
     update_status();
 })
