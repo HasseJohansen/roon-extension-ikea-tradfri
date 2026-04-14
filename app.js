@@ -8,7 +8,7 @@ import IkeaDevices from './devices.js'
 import fs from 'fs'
 
 // Load version from package.json - single source of truth
-const pkg = require('./package.json');
+const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 var _output_id = "";
 var ikea_devices = new Array;
