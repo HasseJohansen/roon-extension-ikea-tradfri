@@ -15,7 +15,7 @@ DESCRIPTION="Roon Extension to control an IKEA Tradfri Plug to turn power on/off
 
 # Set the VERSION variable to the version number of your extension
 # This should match the version in package.json
-VERSION=0.0.20
+VERSION=0.0.21
 
 # Set the EMAIL variable to the address that users can use for support questions
 EMAIL=hasse-roon@1mx.dk
