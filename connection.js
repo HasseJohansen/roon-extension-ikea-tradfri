@@ -3,7 +3,8 @@ import appConfig from '@anujdatar/appconfig'
 import * as  NodeTradfriClient from "node-tradfri-client"
 import * as path from 'path' 
 
-const conf = new appConfig({"configDir": "."});
+// Use a separate config file for Tradfri to avoid conflicts with Roon API config
+const conf = new appConfig({"configDir": ".", "configName": "tradfri-config"});
 const { discoverGateway, TradfriClient } = NodeTradfriClient;
 
 async function getConnection(gwcode) {
