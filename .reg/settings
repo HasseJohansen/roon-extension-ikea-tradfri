@@ -14,7 +14,7 @@ FRIENDLY_NAME="Roon Tradfri"
 DESCRIPTION="Roon Extension to control an IKEA Tradfri Plug to turn power on/off depending on Roon Zone playing state"
 
 # Set the VERSION variable to the version number of your extension
-VERSION=0.0.18
+VERSION=0.0.19
 
 # Set the EMAIL variable to the address that users can use for support questions
 EMAIL=hasse-roon@1mx.dk
