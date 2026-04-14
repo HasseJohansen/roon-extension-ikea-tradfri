@@ -127,6 +127,36 @@ roon.init_services({
     provided_services: [ svc_settings, svc_status ]
 });
 
+// Fix: Initialize paired_core_id from persisted state.
+// Without this, the library doesn't know it's already paired with a Roon Core.
+// Roon requires both a valid token AND active pairing to auto-authorize.
+// This ensures the pairing state is restored before discovery starts.
+const roonstate = roon.load_config("roonstate") || {};
+if (roonstate.paired_core_id) {
+    roon.paired_core_id = roonstate.paired_core_id;
+    roon.paired_core = { core_id: roonstate.paired_core_id };
+    
+    // Patch the pairing service's found_core to send notification even on reconnection.
+    // The library's normal flow only sends notification during first pairing.
+    // On reconnection with pre-set paired_core_id, the notification is skipped.
+    // This causes Roon to not recognize the pairing state.
+    if (roon.pairing_service_1) {
+        const original_found_core = roon.pairing_service_1.found_core;
+        roon.pairing_service_1.found_core = function(core) {
+            original_found_core.call(this, core);
+            // After the original logic, explicitly send pairing notification if this
+            // is the core we're paired with. This handles the reconnection case where
+            // paired_core_id was pre-initialized.
+            if (roon.paired_core_id && roon.paired_core_id === core.core_id) {
+                const svc = this.services && this.services[0];
+                if (svc && svc.send_continue_all) {
+                    svc.send_continue_all("subscribe_pairing", "Changed", { paired_core_id: roon.paired_core_id });
+                }
+            }
+        };
+    }
+}
+
 function update_status() {
     if ( (typeof(_mysettings.outputid) != "undefined") && (_mysettings.ikeaplug != null) ) {
         var device_name = ikea_devices.filter(device => {
@@ -191,12 +221,6 @@ function log() {
 }
 init_signal_handlers()
 get_ikea_devices().then( () => {
-    // Load persisted pairing state before discovery
-    let roonstate = roon.load_config("roonstate") || {};
-    if (roonstate.paired_core_id) {
-        roon.paired_core_id = roonstate.paired_core_id;
-        roon.is_paired = true;
-    }
     roon.start_discovery();
     update_status();
 })
