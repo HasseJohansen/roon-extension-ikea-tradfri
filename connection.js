@@ -6,23 +6,16 @@ import * as path from 'path'
 const conf = new appConfig({"configDir": "."});
 const { discoverGateway, TradfriClient } = NodeTradfriClient;
 
-// Maximum number of retries for gateway connection
-const MAX_RETRIES = 5;
-const RETRY_DELAY_MS = 5000; // 5 seconds between retries
-
-async function getConnection(gwcode, retryCount = 0) {
+// Single-shot connection - no internal retries
+// Retries are handled by the caller to avoid concurrency issues
+async function getConnection(gwcode) {
   try {
-    console.log(`Looking up IKEA Tradfri gateway on your network${retryCount > 0 ? ` (attempt ${retryCount + 1})` : ''}`);
+    console.log(`Looking up IKEA Tradfri gateway on your network`);
     let gateway = await discoverGateway();
 
     if (gateway == null) {
-      if (retryCount >= MAX_RETRIES) {
-        console.log("No Tradfri gateway found in local network after multiple attempts");
-        throw new Error("Tradfri gateway not found");
-      }
-      console.log("Tradfri gateway not found, retrying...");
-      await delay(RETRY_DELAY_MS);
-      return getConnection(gwcode, retryCount + 1);
+      console.log("No Tradfri gateway found in local network");
+      throw new Error("Tradfri gateway not found");
     }
 
     console.log("Connecting to", gateway.host);
@@ -47,13 +40,8 @@ async function getConnection(gwcode, retryCount = 0) {
 
     return tradfri;
   } catch (error) {
-    if (retryCount >= MAX_RETRIES) {
-      console.log(`Failed to connect to Tradfri gateway after ${MAX_RETRIES} attempts:`, error.message);
-      throw error; // Re-throw to let caller handle
-    }
-    console.log(`Tradfri connection failed (attempt ${retryCount + 1}): ${error.message}. Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
-    await delay(RETRY_DELAY_MS);
-    return getConnection(gwcode, retryCount + 1);
+    console.log(`Failed to connect to Tradfri gateway:`, error.message);
+    throw error;
   }
 }
 
