@@ -1,11 +1,14 @@
 {
     "name": "roon-extension-ikea-tradfri",
     "type": "module",
-    "version": "0.0.19",
+    "version": "0.0.20",
     "description": "Roon Extension for switching IKEA Trådfri smart switches",
     "main": "app.js",
     "author": "Hasse Hagen Johansen",
     "license": "Apache-2.0",
+    "scripts": {
+        "update-registry-version": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=' + pkg.version); fs.writeFileSync('.reg/settings', reg); console.log('Updated .reg/settings with version', pkg.version);\""
+    },
     "dependencies": {
         "@anujdatar/appconfig": "^2.2.0",
         "delay": "^7.0.0",

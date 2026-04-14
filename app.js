@@ -7,6 +7,9 @@ import IkeaConnection from './connection.js'
 import IkeaDevices from './devices.js' 
 import fs from 'fs'
 
+// Load version from package.json - single source of truth
+const pkg = require('./package.json');
+
 var _output_id = "";
 var ikea_devices = new Array;
 var tradfri
@@ -15,7 +18,7 @@ var first_run = false
 var roon = new RoonApi({
     extension_id:        'dk.hagenjohansen.roontradfri',
     display_name:        "Roon Tradfri",
-    display_version:     "0.0.17",
+    display_version:     pkg.version,
     publisher:           'Hasse Hagen Johansen',
     email:               'hasse-roon@hagenjohansen.dk',
     website:             'https://github.com/HasseJohansen/roon-extension-ikea-tradfri',
@@ -162,7 +165,11 @@ function update_status() {
         var device_name = ikea_devices.filter(device => {
 	    return device.value === _mysettings.ikeaplug
         })[0]
-        svc_status.set_status(_mysettings.outputid.name + " set to: " + device_name.title, false);
+        if (device_name && device_name.title) {
+            svc_status.set_status(_mysettings.outputid.name + " set to: " + device_name.title, false);
+        } else {
+            svc_status.set_status("Configured but device not found");
+        }
     }
     else {
 	svc_status.set_status("First run. Please update settings");
