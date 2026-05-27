@@ -182,7 +182,8 @@ var svc_settings = new RoonApiSettings(roon, {
             req.send_complete(l.has_error ? "NotValid" : "Success", { settings: l });
 
             if (!l.has_error && first_run == false) {
-	        delete l.values.ikeagwkey;
+	        // Keep ikeagwkey in memory for reconnection attempts
+	        // It will be deleted after successful Tradfri authentication
 	        _mysettings = l.values;
                 svc_settings.update_settings(l);
                 roon.save_config("settings", _mysettings);
@@ -284,7 +285,8 @@ const check_gateway = async () => {
         if (gateway_discovered) {
             console.log("Attempting to reconnect to previously discovered gateway...");
             ikea_devices = new Array();
-            await get_ikea_devices();
+            // Pass security code from settings if available for reconnection
+            await get_ikea_devices(_mysettings.ikeagwkey);
             update_status();
             return;
         }
@@ -385,8 +387,9 @@ const get_ikea_devices = async (gwkey="undefined") => {
             // Gateway was found on network but connection failed (likely no/stored credentials)
             // This is different from "gateway not on network" error
             if (result === false) {
-                // getConnection returned false - gateway WAS discovered but no credentials
-                gateway_discovered = true;
+                // getConnection returned false - no credentials provided
+                // Don't set gateway_discovered - we need valid credentials first
+                gateway_discovered = false;
             }
             console.log("IKEA gateway found but not connected (no credentials or connection failed)");
         }
@@ -400,6 +403,8 @@ const get_ikea_devices = async (gwkey="undefined") => {
 	    if (!result.usedCached && result.identity && result.psk) {
 	        _mysettings.tradfri_identity = result.identity;
 	        _mysettings.tradfri_psk = result.psk;
+	        // Now we have proper credentials, can delete the security code
+	        delete _mysettings.ikeagwkey;
 	        roon.save_config("settings", _mysettings);
 	        console.log("Saved new Tradfri credentials to Roon config");
 	    }
@@ -487,7 +492,7 @@ roon.start_discovery();
 update_status();
 
 // Start Tradfri discovery in parallel - it will auto-retry on failure
-get_ikea_devices().then(() => {
+get_ikea_devices(_mysettings.ikeagwkey).then(() => {
     update_status();
 }).catch(err => {
     console.log('Tradfri discovery failed, will retry:', err && err.message ? err.message : err);
