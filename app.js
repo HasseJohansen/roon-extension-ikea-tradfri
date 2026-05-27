@@ -16,6 +16,7 @@ var tradfri
 var first_run = false
 var gateway_available = false
 var gateway_discovered = false
+var auth_failed = false
 var gateway_check_timer = null
 var gateway_discovering = false
 const GATEWAY_CHECK_INTERVAL_MS = 60000 // Check every 60 seconds
@@ -47,7 +48,7 @@ var roon = new RoonApi({
                             }
                         });
                     });
-                }    
+                }   
             }
         });
     },
@@ -63,7 +64,9 @@ var roon = new RoonApi({
 
 var _mysettings = Object.assign({
     zone:             null,
-    ikeaplug:         null
+    ikeaplug:         null,
+    tradfri_identity: null,
+    tradfri_psk:      null
 }, roon.load_config("settings") || {});
 
 function makelayout(settings) {
@@ -75,11 +78,19 @@ function makelayout(settings) {
         };
         if( first_run == true ) {
 	    do_not_log()
-            l.layout.push({
-	        type: "string",
-	        title: "Input security code(bottom of gateway)",
-	        setting: "ikeagwkey",
-	    })
+            if (auth_failed) {
+                l.layout.push({
+	            type: "string",
+	            title: "Authentication failed. Please re-enter security code(bottom of gateway)",
+	            setting: "ikeagwkey",
+	        });
+            } else {
+                l.layout.push({
+	            type: "string",
+	            title: "Input security code(bottom of gateway)",
+	            setting: "ikeagwkey",
+	        });
+            }
         }
         else {
             delete l.values.ikeagwkey;
@@ -125,19 +136,28 @@ function makelayout(settings) {
 var svc_settings = new RoonApiSettings(roon, {
         get_settings: function(cb) {
             try {
+                // If authentication failed, force first_run mode to allow re-entry of security code
+                if (auth_failed) {
+                    first_run = true;
+                }
                 if (!gateway_discovered) {
-                    // Return a minimal valid layout - empty settings
-                    cb({
-                        values: {},
-                        layout: [],
-                        has_error: true,
-                        error: "IKEA gateway not found"
-                    });
+                    // If auth failed, show security code field instead of error
+                    if (auth_failed) {
+                        cb(makelayout(_mysettings || {}));
+                    } else {
+                        // Return a minimal valid layout - empty settings
+                        cb({
+                            values: {},
+                            layout: [],
+                            has_error: true,
+                            error: "IKEA gateway not found"
+                        });
+                    }
                     return;
                 }
-                // If gateway was discovered but not available, force first_run mode
-                // This prevents crashes when gateway is off after being connected
-                if (!gateway_available) {
+                // If gateway was discovered but auth failed, force first_run to show security code field
+                // Also force first_run if gateway not available and no security code
+                if ((!gateway_available && !_mysettings.ikeagwkey) || auth_failed) {
                     first_run = true;
                 }
                 cb(makelayout(_mysettings || {}));
@@ -153,17 +173,23 @@ var svc_settings = new RoonApiSettings(roon, {
     },
     save_settings: function(req, isdryrun, settings) {
         try {
+            // Only block if gateway not discovered AND no security code to process
             if (!gateway_discovered) {
-                req.send_complete("NotValid", { settings: {
-                    values: _mysettings || {},
-                    layout: [{
-                        type: "string",
-                        title: "IKEA gw not found",
-                        readonly: true
-                    }],
-                    has_error: true
-                } });
-                return;
+                // Check if user is submitting a security code
+                const hasSecurityCode = settings && settings.values && settings.values.ikeagwkey;
+                if (!hasSecurityCode) {
+                    req.send_complete("NotValid", { settings: {
+                        values: _mysettings || {},
+                        layout: [{
+                            type: "string",
+                            title: "IKEA gw not found",
+                            readonly: true
+                        }],
+                        has_error: true
+                    } });
+                    return;
+                }
+                // User is submitting security code - allow it
             }
             // Force first_run mode if gateway not available to prevent crashes
             if (!gateway_available) {
@@ -180,7 +206,8 @@ var svc_settings = new RoonApiSettings(roon, {
             req.send_complete(l.has_error ? "NotValid" : "Success", { settings: l });
 
             if (!l.has_error && first_run == false) {
-	        delete l.values.ikeagwkey;
+	        // Keep ikeagwkey in memory for reconnection attempts
+	        // It will be deleted after successful Tradfri authentication
 	        _mysettings = l.values;
                 svc_settings.update_settings(l);
                 roon.save_config("settings", _mysettings);
@@ -188,15 +215,31 @@ var svc_settings = new RoonApiSettings(roon, {
             }
 	    else {
 	        first_run = false;
-	        get_ikea_devices(l.values['ikeagwkey']).then( () => {
-		    // Connection succeeded, refresh settings to show devices
+	        auth_failed = false; // Clear auth failure flag when user tries again
+	        // Save the security code to _mysettings for reconnection attempts
+	        if (settings && settings.values && settings.values.ikeagwkey) {
+	            _mysettings.ikeagwkey = settings.values.ikeagwkey;
+	        }
+	        get_ikea_devices(settings && settings.values ? settings.values.ikeagwkey : undefined).then( () => {
+		    // Connection succeeded - update state and refresh UI
 		    first_run = false;
+		    auth_failed = false;
+		    gateway_discovered = true;
+		    gateway_available = true;
 		    svc_status.set_status("Not Configured");
+		    
+		    // Force UI refresh by updating settings
+		    _mysettings = l.values;
+		    const newLayout = makelayout(_mysettings);
+		    svc_settings.update_settings(newLayout);
+		    update_status();
 	        }).catch(err => {
 		    console.log('Failed to connect to gateway:', err && err.message ? err.message : err);
-		    // Connection failed - leave first_run as true so user can retry
+		    // Connection failed - set auth_failed so user can retry with new security code
 		    first_run = true;
+		    auth_failed = true;
 		    gateway_available = false;
+		    gateway_discovered = false;
 		    update_status();
 	        });
 	    }
@@ -236,7 +279,10 @@ if (roonstate.paired_core_id) {
 
 function update_status() {
     try {
-        if (!gateway_discovered) {
+        if (auth_failed) {
+            svc_status.set_status("Authentication failed. Please re-enter security code");
+        }
+        else if (!gateway_discovered) {
             svc_status.set_status("IKEA gw not found");
         }
         else if ( (typeof(_mysettings.outputid) != "undefined") && (_mysettings.ikeaplug != null) ) {
@@ -274,7 +320,8 @@ const check_gateway = async () => {
         if (gateway_discovered) {
             console.log("Attempting to reconnect to previously discovered gateway...");
             ikea_devices = new Array();
-            await get_ikea_devices();
+            // Pass security code from settings if available for reconnection
+            await get_ikea_devices(_mysettings.ikeagwkey);
             update_status();
             return;
         }
@@ -346,15 +393,15 @@ const get_ikea_devices = async (gwkey="undefined") => {
         }
         
         // Quick retry loop - don't block check_gateway for long
+        let result;
         for (let attempt = 0; attempt <= MAX_DISCOVERY_ATTEMPTS; attempt++) {
             try {
-                // If security code provided, use it directly. Otherwise try with stored credentials.
-                if (gwkey != "undefined") {
-                    tradfri = await IkeaConnection.getConnection(gwkey);
-                } else {
-                    tradfri = await IkeaConnection.getConnection();
-                }
-                
+                // Pass cached credentials from Roon config
+                result = await IkeaConnection.getConnection(
+                    gwkey !== "undefined" ? gwkey : undefined,
+                    _mysettings.tradfri_identity,
+                    _mysettings.tradfri_psk
+                );
                 // Connection attempt succeeded (may have returned false if no credentials)
                 break;
             } catch (err) {
@@ -369,21 +416,38 @@ const get_ikea_devices = async (gwkey="undefined") => {
         }
         
         // Handle connection result
-        if (typeof(tradfri) != "object") {
+        if (typeof(result) != "object" || result === false) {
             first_run = true;
             gateway_available = false;
             // Gateway was found on network but connection failed (likely no/stored credentials)
             // This is different from "gateway not on network" error
-            if (tradfri === false) {
-                // getConnection returned false - gateway WAS discovered but no credentials
-                gateway_discovered = true;
+            if (result === false) {
+                // getConnection returned false - authentication failed or no credentials
+                // Set auth_failed flag to allow user to re-enter security code
+                // NOTE: gateway_discovered stays TRUE because we found the gateway via bonjour
+                auth_failed = true;
+                console.log("Authentication failed - security code required");
+            } else {
+                // Connection failed for other reasons (network, etc.)
+                console.log("IKEA gateway found but not connected (no credentials or connection failed)");
             }
-            console.log("IKEA gateway found but not connected (no credentials or connection failed)");
         }
-        else {
+        else if (result && result.tradfri) {
 	    first_run = false;
 	    gateway_available = true;
 	    gateway_discovered = true;
+	    tradfri = result.tradfri;
+	    
+	    // Save new credentials if they're from a fresh authentication
+	    if (!result.usedCached && result.identity && result.psk) {
+	        _mysettings.tradfri_identity = result.identity;
+	        _mysettings.tradfri_psk = result.psk;
+	        // Now we have proper credentials, can delete the security code
+	        delete _mysettings.ikeagwkey;
+	        roon.save_config("settings", _mysettings);
+	        console.log("Saved new Tradfri credentials to Roon config");
+	    }
+	    
 	    tradfri.observeDevices();
 	    await delay(5000)
 	    for (const deviceId in tradfri.devices) {
@@ -400,8 +464,17 @@ const get_ikea_devices = async (gwkey="undefined") => {
         console.log("Error in get_ikea_devices after attempts:", err && err.message ? err.message : err);
         gateway_available = false;
         first_run = true;
+        // Set auth_failed for authentication errors
+        if (err.message && (err.message.includes("not valid") || err.message.includes("Authentication") || err.message.includes("re-authenticate"))) {
+            auth_failed = true;
+            gateway_discovered = false;
+            _mysettings.tradfri_identity = null;
+            _mysettings.tradfri_psk = null;
+            roon.save_config("settings", _mysettings);
+            console.log("Authentication failed - cleared invalid credentials");
+        }
         // Only set gateway_discovered to false if gateway is not on the network
-        if (err.message && err.message.includes("Tradfri gateway not found")) {
+        else if (err.message && err.message.includes("Tradfri gateway not found")) {
             gateway_discovered = false;
         }
         // For other errors (connection issues), leave gateway_discovered as is (it will be set by successful connection)
@@ -460,7 +533,7 @@ roon.start_discovery();
 update_status();
 
 // Start Tradfri discovery in parallel - it will auto-retry on failure
-get_ikea_devices().then(() => {
+get_ikea_devices(_mysettings.ikeagwkey).then(() => {
     update_status();
 }).catch(err => {
     console.log('Tradfri discovery failed, will retry:', err && err.message ? err.message : err);
