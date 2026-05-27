@@ -16,6 +16,7 @@ var tradfri
 var first_run = false
 var gateway_available = false
 var gateway_discovered = false
+var auth_failed = false
 var gateway_check_timer = null
 var gateway_discovering = false
 const GATEWAY_CHECK_INTERVAL_MS = 60000 // Check every 60 seconds
@@ -127,6 +128,10 @@ function makelayout(settings) {
 var svc_settings = new RoonApiSettings(roon, {
         get_settings: function(cb) {
             try {
+                // If authentication failed, force first_run mode to allow re-entry of security code
+                if (auth_failed) {
+                    first_run = true;
+                }
                 if (!gateway_discovered) {
                     // Return a minimal valid layout - empty settings
                     cb({
@@ -139,7 +144,7 @@ var svc_settings = new RoonApiSettings(roon, {
                 }
                 // If gateway was discovered but not available, only force first_run if we don't have a security code
                 // This prevents the brief glimpse of security code field during authentication
-                if (!gateway_available && !_mysettings.ikeagwkey) {
+                if (!gateway_available && !_mysettings.ikeagwkey && !auth_failed) {
                     first_run = true;
                 }
                 cb(makelayout(_mysettings || {}));
@@ -191,9 +196,11 @@ var svc_settings = new RoonApiSettings(roon, {
             }
 	    else {
 	        first_run = false;
+	        auth_failed = false; // Clear auth failure flag when user tries again
 	        get_ikea_devices(l.values['ikeagwkey']).then( () => {
 		    // Connection succeeded - update state and refresh UI
 		    first_run = false;
+		    auth_failed = false;
 		    gateway_discovered = true;
 		    gateway_available = true;
 		    svc_status.set_status("Not Configured");
@@ -205,9 +212,11 @@ var svc_settings = new RoonApiSettings(roon, {
 		    update_status();
 	        }).catch(err => {
 		    console.log('Failed to connect to gateway:', err && err.message ? err.message : err);
-		    // Connection failed - leave first_run as true so user can retry
+		    // Connection failed - set auth_failed so user can retry with new security code
 		    first_run = true;
+		    auth_failed = true;
 		    gateway_available = false;
+		    gateway_discovered = false;
 		    update_status();
 	        });
 	    }
@@ -387,11 +396,15 @@ const get_ikea_devices = async (gwkey="undefined") => {
             // Gateway was found on network but connection failed (likely no/stored credentials)
             // This is different from "gateway not on network" error
             if (result === false) {
-                // getConnection returned false - no credentials provided
-                // Don't set gateway_discovered - we need valid credentials first
+                // getConnection returned false - authentication failed or no credentials
+                // Set auth_failed flag to allow user to re-enter security code
+                auth_failed = true;
                 gateway_discovered = false;
+                console.log("Authentication failed - security code required");
+            } else {
+                gateway_discovered = false;
+                console.log("IKEA gateway found but not connected (no credentials or connection failed)");
             }
-            console.log("IKEA gateway found but not connected (no credentials or connection failed)");
         }
         else if (result && result.tradfri) {
 	    first_run = false;
