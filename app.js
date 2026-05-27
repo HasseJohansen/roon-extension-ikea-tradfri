@@ -141,13 +141,18 @@ var svc_settings = new RoonApiSettings(roon, {
                     first_run = true;
                 }
                 if (!gateway_discovered) {
-                    // Return a minimal valid layout - empty settings
-                    cb({
-                        values: {},
-                        layout: [],
-                        has_error: true,
-                        error: auth_failed ? "Authentication failed. Please re-enter security code" : "IKEA gateway not found"
-                    });
+                    // If auth failed, show security code field instead of error
+                    if (auth_failed) {
+                        cb(makelayout(_mysettings || {}));
+                    } else {
+                        // Return a minimal valid layout - empty settings
+                        cb({
+                            values: {},
+                            layout: [],
+                            has_error: true,
+                            error: "IKEA gateway not found"
+                        });
+                    }
                     return;
                 }
                 // If gateway was discovered but not available, only force first_run if we don't have a security code
