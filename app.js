@@ -47,7 +47,7 @@ var roon = new RoonApi({
                             }
                         });
                     });
-                }    
+                }   
             }
         });
     },
@@ -63,7 +63,9 @@ var roon = new RoonApi({
 
 var _mysettings = Object.assign({
     zone:             null,
-    ikeaplug:         null
+    ikeaplug:         null,
+    tradfri_identity: null,
+    tradfri_psk:      null
 }, roon.load_config("settings") || {});
 
 function makelayout(settings) {
@@ -346,15 +348,15 @@ const get_ikea_devices = async (gwkey="undefined") => {
         }
         
         // Quick retry loop - don't block check_gateway for long
+        let result;
         for (let attempt = 0; attempt <= MAX_DISCOVERY_ATTEMPTS; attempt++) {
             try {
-                // If security code provided, use it directly. Otherwise try with stored credentials.
-                if (gwkey != "undefined") {
-                    tradfri = await IkeaConnection.getConnection(gwkey);
-                } else {
-                    tradfri = await IkeaConnection.getConnection();
-                }
-                
+                // Pass cached credentials from Roon config
+                result = await IkeaConnection.getConnection(
+                    gwkey !== "undefined" ? gwkey : undefined,
+                    _mysettings.tradfri_identity,
+                    _mysettings.tradfri_psk
+                );
                 // Connection attempt succeeded (may have returned false if no credentials)
                 break;
             } catch (err) {
@@ -369,21 +371,31 @@ const get_ikea_devices = async (gwkey="undefined") => {
         }
         
         // Handle connection result
-        if (typeof(tradfri) != "object") {
+        if (typeof(result) != "object" || result === false) {
             first_run = true;
             gateway_available = false;
             // Gateway was found on network but connection failed (likely no/stored credentials)
             // This is different from "gateway not on network" error
-            if (tradfri === false) {
+            if (result === false) {
                 // getConnection returned false - gateway WAS discovered but no credentials
                 gateway_discovered = true;
             }
             console.log("IKEA gateway found but not connected (no credentials or connection failed)");
         }
-        else {
+        else if (result && result.tradfri) {
 	    first_run = false;
 	    gateway_available = true;
 	    gateway_discovered = true;
+	    tradfri = result.tradfri;
+	    
+	    // Save new credentials if they're from a fresh authentication
+	    if (!result.usedCached && result.identity && result.psk) {
+	        _mysettings.tradfri_identity = result.identity;
+	        _mysettings.tradfri_psk = result.psk;
+	        roon.save_config("settings", _mysettings);
+	        console.log("Saved new Tradfri credentials to Roon config");
+	    }
+	    
 	    tradfri.observeDevices();
 	    await delay(5000)
 	    for (const deviceId in tradfri.devices) {
@@ -403,6 +415,13 @@ const get_ikea_devices = async (gwkey="undefined") => {
         // Only set gateway_discovered to false if gateway is not on the network
         if (err.message && err.message.includes("Tradfri gateway not found")) {
             gateway_discovered = false;
+        }
+        // Clear cached credentials on auth failure
+        if (err.message && (err.message.includes("not valid") || err.message.includes("Authentication"))) {
+            _mysettings.tradfri_identity = null;
+            _mysettings.tradfri_psk = null;
+            roon.save_config("settings", _mysettings);
+            console.log("Cleared invalid cached credentials");
         }
         // For other errors (connection issues), leave gateway_discovered as is (it will be set by successful connection)
     } finally {
