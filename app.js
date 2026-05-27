@@ -210,6 +210,8 @@ var svc_settings = new RoonApiSettings(roon, {
 	    else {
 	        first_run = false;
 	        auth_failed = false; // Clear auth failure flag when user tries again
+	        // Save the security code to _mysettings for reconnection attempts
+	        _mysettings.ikeagwkey = l.values['ikeagwkey'];
 	        get_ikea_devices(l.values['ikeagwkey']).then( () => {
 		    // Connection succeeded - update state and refresh UI
 		    first_run = false;
