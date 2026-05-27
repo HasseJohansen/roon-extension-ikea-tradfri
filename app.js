@@ -191,9 +191,17 @@ var svc_settings = new RoonApiSettings(roon, {
 	    else {
 	        first_run = false;
 	        get_ikea_devices(l.values['ikeagwkey']).then( () => {
-		    // Connection succeeded, refresh settings to show devices
+		    // Connection succeeded - update state and refresh UI
 		    first_run = false;
+		    gateway_discovered = true;
+		    gateway_available = true;
 		    svc_status.set_status("Not Configured");
+		    
+		    // Force UI refresh by updating settings
+		    _mysettings = l.values;
+		    const newLayout = makelayout(_mysettings);
+		    svc_settings.update_settings(newLayout);
+		    update_status();
 	        }).catch(err => {
 		    console.log('Failed to connect to gateway:', err && err.message ? err.message : err);
 		    // Connection failed - leave first_run as true so user can retry
