@@ -78,11 +78,19 @@ function makelayout(settings) {
         };
         if( first_run == true ) {
 	    do_not_log()
-            l.layout.push({
-	        type: "string",
-	        title: "Input security code(bottom of gateway)",
-	        setting: "ikeagwkey",
-	    })
+            if (auth_failed) {
+                l.layout.push({
+	            type: "string",
+	            title: "Authentication failed. Please re-enter security code(bottom of gateway)",
+	            setting: "ikeagwkey",
+	        });
+            } else {
+                l.layout.push({
+	            type: "string",
+	            title: "Input security code(bottom of gateway)",
+	            setting: "ikeagwkey",
+	        });
+            }
         }
         else {
             delete l.values.ikeagwkey;
