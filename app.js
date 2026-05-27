@@ -454,16 +454,18 @@ const get_ikea_devices = async (gwkey="undefined") => {
         console.log("Error in get_ikea_devices after attempts:", err && err.message ? err.message : err);
         gateway_available = false;
         first_run = true;
-        // Only set gateway_discovered to false if gateway is not on the network
-        if (err.message && err.message.includes("Tradfri gateway not found")) {
+        // Set auth_failed for authentication errors
+        if (err.message && (err.message.includes("not valid") || err.message.includes("Authentication") || err.message.includes("re-authenticate"))) {
+            auth_failed = true;
             gateway_discovered = false;
-        }
-        // Clear cached credentials on auth failure
-        if (err.message && (err.message.includes("not valid") || err.message.includes("Authentication"))) {
             _mysettings.tradfri_identity = null;
             _mysettings.tradfri_psk = null;
             roon.save_config("settings", _mysettings);
-            console.log("Cleared invalid cached credentials");
+            console.log("Authentication failed - cleared invalid credentials");
+        }
+        // Only set gateway_discovered to false if gateway is not on the network
+        else if (err.message && err.message.includes("Tradfri gateway not found")) {
+            gateway_discovered = false;
         }
         // For other errors (connection issues), leave gateway_discovered as is (it will be set by successful connection)
     } finally {
