@@ -174,33 +174,22 @@ var svc_settings = new RoonApiSettings(roon, {
     save_settings: function(req, isdryrun, settings) {
         try {
             // Only block if gateway not discovered AND no security code to process
-            if (!gateway_discovered && !settings.values && !settings.values.ikeagwkey) {
-                req.send_complete("NotValid", { settings: {
-                    values: _mysettings || {},
-                    layout: [{
-                        type: "string",
-                        title: "IKEA gw not found",
-                        readonly: true
-                    }],
-                    has_error: true
-                } });
-                return;
-            }
-            
-            // If we have a security code to process, allow it even if gateway not yet discovered
-            if (!gateway_discovered && settings.values && settings.values.ikeagwkey) {
-                // This is first run with security code - allow it
-            } else if (!gateway_discovered) {
-                req.send_complete("NotValid", { settings: {
-                    values: _mysettings || {},
-                    layout: [{
-                        type: "string",
-                        title: "IKEA gw not found",
-                        readonly: true
-                    }],
-                    has_error: true
-                } });
-                return;
+            if (!gateway_discovered) {
+                // Check if user is submitting a security code
+                const hasSecurityCode = settings && settings.values && settings.values.ikeagwkey;
+                if (!hasSecurityCode) {
+                    req.send_complete("NotValid", { settings: {
+                        values: _mysettings || {},
+                        layout: [{
+                            type: "string",
+                            title: "IKEA gw not found",
+                            readonly: true
+                        }],
+                        has_error: true
+                    } });
+                    return;
+                }
+                // User is submitting security code - allow it
             }
             // Force first_run mode if gateway not available to prevent crashes
             if (!gateway_available) {
