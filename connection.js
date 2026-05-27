@@ -34,39 +34,47 @@ async function getConnection(gwcode, cachedIdentity, cachedPsk) {
       }
     }
 
-    // Fall back to appConfig (for Docker or if Roon config not available)
-    if (!conf.has('security.identity') || !conf.has('security.psk')) {
-      let securityCode = gwcode;
-      if (securityCode === "" || securityCode === undefined) {
-        console.log("For first time run make sure to set proper gateway security code(bottom of gateway device)");
-        return false;
+    // Priority 2: If security code provided, use it (regardless of appConfig state)
+    // This fixes the issue where stale appConfig credentials prevent authentication
+    if (gwcode && gwcode !== "" && gwcode !== undefined) {
+      try {
+        console.log("Getting identity from security code");
+        const { identity, psk } = await tradfri.authenticate(gwcode);
+
+        console.log("Securely connecting to gateway");
+        await tradfri.connect(identity, psk);
+
+        // Save to appConfig for Docker compatibility
+        conf.set('security', { identity, psk });
+
+        return { tradfri, identity, psk, usedCached: false };
+      } catch (authError) {
+        console.log("Security code authentication failed:", authError.message);
+        // Fall through to try appConfig
       }
-
-      console.log("Getting identity from security code");
-      const { identity, psk } = await tradfri.authenticate(securityCode);
-
-      conf.set('security', { identity, psk });
-      // Also try to connect with new credentials
-      await tradfri.connect(identity, psk);
-      return { tradfri, identity, psk, usedCached: false };
     }
 
-    // Try appConfig credentials
-    try {
-      console.log("Attempting connection with appConfig credentials");
-      await tradfri.connect(conf.get('security.identity'), conf.get('security.psk'));
-      return { 
-        tradfri, 
-        identity: conf.get('security.identity'), 
-        psk: conf.get('security.psk'),
-        usedCached: true 
-      };
-    } catch (connectError) {
-      console.log("appConfig credentials failed:", connectError.message);
-      // Clear stale appConfig credentials
-      conf.delete('security');
-      return false;
+    // Priority 3: Try appConfig credentials (for Docker fallback)
+    if (conf.has('security.identity') && conf.has('security.psk')) {
+      try {
+        console.log("Attempting connection with appConfig credentials");
+        await tradfri.connect(conf.get('security.identity'), conf.get('security.psk'));
+        return { 
+          tradfri, 
+          identity: conf.get('security.identity'), 
+          psk: conf.get('security.psk'),
+          usedCached: true 
+        };
+      } catch (connectError) {
+        console.log("appConfig credentials failed:", connectError.message);
+        // Clear stale credentials
+        conf.delete('security');
+      }
     }
+
+    // No valid credentials available
+    console.log("No valid credentials available - security code required");
+    return false;
 
   } catch (error) {
     console.log(`Failed to connect to Tradfri gateway:`, error.message);
