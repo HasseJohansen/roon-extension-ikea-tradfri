@@ -138,7 +138,7 @@ var svc_settings = new RoonApiSettings(roon, {
                         values: {},
                         layout: [],
                         has_error: true,
-                        error: "IKEA gateway not found"
+                        error: auth_failed ? "Authentication failed. Please re-enter security code" : "IKEA gateway not found"
                     });
                     return;
                 }
@@ -256,7 +256,10 @@ if (roonstate.paired_core_id) {
 
 function update_status() {
     try {
-        if (!gateway_discovered) {
+        if (auth_failed) {
+            svc_status.set_status("Authentication failed. Please re-enter security code");
+        }
+        else if (!gateway_discovered) {
             svc_status.set_status("IKEA gw not found");
         }
         else if ( (typeof(_mysettings.outputid) != "undefined") && (_mysettings.ikeaplug != null) ) {
