@@ -137,9 +137,9 @@ var svc_settings = new RoonApiSettings(roon, {
                     });
                     return;
                 }
-                // If gateway was discovered but not available, force first_run mode
-                // This prevents crashes when gateway is off after being connected
-                if (!gateway_available) {
+                // If gateway was discovered but not available, only force first_run if we don't have a security code
+                // This prevents the brief glimpse of security code field during authentication
+                if (!gateway_available && !_mysettings.ikeagwkey) {
                     first_run = true;
                 }
                 cb(makelayout(_mysettings || {}));
