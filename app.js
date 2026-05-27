@@ -155,9 +155,9 @@ var svc_settings = new RoonApiSettings(roon, {
                     }
                     return;
                 }
-                // If gateway was discovered but not available, only force first_run if we don't have a security code
-                // This prevents the brief glimpse of security code field during authentication
-                if (!gateway_available && !_mysettings.ikeagwkey && !auth_failed) {
+                // If gateway was discovered but auth failed, force first_run to show security code field
+                // Also force first_run if gateway not available and no security code
+                if ((!gateway_available && !_mysettings.ikeagwkey) || auth_failed) {
                     first_run = true;
                 }
                 cb(makelayout(_mysettings || {}));
@@ -173,7 +173,24 @@ var svc_settings = new RoonApiSettings(roon, {
     },
     save_settings: function(req, isdryrun, settings) {
         try {
-            if (!gateway_discovered) {
+            // Only block if gateway not discovered AND no security code to process
+            if (!gateway_discovered && !settings.values && !settings.values.ikeagwkey) {
+                req.send_complete("NotValid", { settings: {
+                    values: _mysettings || {},
+                    layout: [{
+                        type: "string",
+                        title: "IKEA gw not found",
+                        readonly: true
+                    }],
+                    has_error: true
+                } });
+                return;
+            }
+            
+            // If we have a security code to process, allow it even if gateway not yet discovered
+            if (!gateway_discovered && settings.values && settings.values.ikeagwkey) {
+                // This is first run with security code - allow it
+            } else if (!gateway_discovered) {
                 req.send_complete("NotValid", { settings: {
                     values: _mysettings || {},
                     layout: [{
@@ -416,11 +433,11 @@ const get_ikea_devices = async (gwkey="undefined") => {
             if (result === false) {
                 // getConnection returned false - authentication failed or no credentials
                 // Set auth_failed flag to allow user to re-enter security code
+                // NOTE: gateway_discovered stays TRUE because we found the gateway via bonjour
                 auth_failed = true;
-                gateway_discovered = false;
                 console.log("Authentication failed - security code required");
             } else {
-                gateway_discovered = false;
+                // Connection failed for other reasons (network, etc.)
                 console.log("IKEA gateway found but not connected (no credentials or connection failed)");
             }
         }
