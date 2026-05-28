@@ -202,7 +202,7 @@ export function createSettingsService(roon) {
                         setStateValue('gatewayAvailable', true);
 
                         // Force UI refresh by updating settings
-                        updateSettings(l.values);
+                        updateStateSettings(l.values);
                     }).catch(err => {
                         console.log('Failed to connect to gateway:', err && err.message ? err.message : err);
                         // Connection failed - set auth_failed so user can retry with new security code
