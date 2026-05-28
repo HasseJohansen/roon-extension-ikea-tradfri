@@ -162,6 +162,7 @@ export async function getIkeaDevices(gwkey = "undefined") {
         } else if (result && result.tradfri) {
             updateState({
                 firstRun: false,
+                authFailed: false,
                 gatewayAvailable: true,
                 gatewayDiscovered: true,
                 tradfri: result.tradfri
