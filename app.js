@@ -7,6 +7,7 @@ import fs from 'fs';
 import RoonApi from "node-roon-api";
 import RoonApiStatus from "node-roon-api-status";
 import RoonApiTransport from "node-roon-api-transport";
+import logger from './logger.js';
 
 import {
     getStateValue,
@@ -47,10 +48,10 @@ const roon = new RoonApi({
                         zone.outputs.forEach(output => {
                             if (output.output_id === getStateValue('outputId')) {
                                 if (zone.state === "playing" || zone.state === "loading") {
-                                    console.log('Turning ON IKEA device');
+                                    logger.info('Turning ON IKEA device');
                                     turnIkeaDevice("ON", getSettings().ikeaplug);
                                 } else {
-                                    console.log('Turning OFF IKEA device');
+                                    logger.info('Turning OFF IKEA device');
                                     turnIkeaDevice("OFF", getSettings().ikeaplug);
                                 }
                             }
@@ -62,11 +63,7 @@ const roon = new RoonApi({
     },
 
     core_unpaired: async function(core) {
-        console.log(core.core_id,
-            core.display_name,
-            core.display_version,
-            "-",
-            "LOST");
+        logger.info(`${core.core_id}, ${core.display_name}, ${core.display_version}, - LOST`);
         // Cleanup resources when core is unpaired
         stopGatewayMonitor();
         await cleanupTradfriConnection();
@@ -101,7 +98,7 @@ if (roonstate.paired_core_id) {
     roon.paired_core_id = roonstate.paired_core_id;
     roon.paired_core = { core_id: roonstate.paired_core_id };
     roon.is_paired = true;
-    console.log(`[DIAG] Restored pairing state: ${roonstate.paired_core_id}, is_paired=true`);
+    logger.info(`[DIAG] Restored pairing state: ${roonstate.paired_core_id}, is_paired=true`);
 }
 
 // Set initial status before gateway discovery starts
@@ -109,17 +106,17 @@ updateStatus(svc_status);
 
 // Global error handlers
 process.on('uncaughtException', (err) => {
-    console.log('Uncaught Exception:', err && err.message ? err.message : err);
+    logger.error('Uncaught Exception:', err && err.message ? err.message : err);
     // Try to recover by resetting state
     stopGatewayMonitor();
     setStateValue('gatewayDiscovering', false);
     cleanupTradfriConnection().catch(e => {
-        console.log("Warning: Error during tradfri cleanup in uncaughtException:", e.message);
+        logger.warn("Warning: Error during tradfri cleanup in uncaughtException:", e.message);
     });
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.log('Unhandled Rejection at:', promise, 'reason:', reason && reason.message ? reason.message : reason);
+    logger.error('Unhandled Rejection at:', promise, 'reason:', reason && reason.message ? reason.message : reason);
 });
 
 // Start Roon discovery IMMEDIATELY - don't wait for Tradfri
@@ -132,7 +129,7 @@ const mysettings = getSettings();
 getIkeaDevices(mysettings.ikeagwkey).then(() => {
     updateStatus(svc_status);
 }).catch(err => {
-    console.log('Tradfri discovery failed, will retry:', err && err.message ? err.message : err);
+    logger.error('Tradfri discovery failed, will retry:', err && err.message ? err.message : err);
     updateState({
         gatewayAvailable: false,
         gatewayDiscovered: err.message && err.message.includes("Tradfri gateway not found") ? false : getStateValue('gatewayDiscovered')
@@ -148,7 +145,7 @@ startGatewayMonitor();
  */
 function initSignalHandlers() {
     const handle = function(signal) {
-        console.log(`Received ${signal}, shutting down gracefully...`);
+        logger.info(`Received ${signal}, shutting down gracefully...`);
         stopGatewayMonitor();
         cleanupTradfriConnection().then(() => {
             process.exit(0);

@@ -1,10 +1,10 @@
-
+import logger from './logger.js';
 
 function printDeviceInfo( device ) {
     switch( device.type ) {
     case 0: // remote
     case 4: // sensor
-        console.log( device.instanceId, device.name, `battery ${device.deviceInfo.battery}%` );
+        logger.info(device.instanceId, device.name, `battery ${device.deviceInfo.battery}%`);
         break;
     case 2: // light
         {
@@ -16,32 +16,17 @@ function printDeviceInfo( device ) {
                 color: lightInfo.color,
                 colorTemperature: lightInfo.colorTemperature
             };
-            console.log( device.instanceId, device.name, lightInfo.onOff ? "On" : "Off", JSON.stringify( info) );
+            logger.info(device.instanceId, device.name, lightInfo.onOff ? "On" : "Off", JSON.stringify(info));
         }
         break;
     case 3: // plug
-        console.log( device.instanceId, device.name, device.plugList[0].onOff ? "On" : "Off" );
+        logger.info(device.instanceId, device.name, device.plugList[0].onOff ? "On" : "Off");
         break;
     default:
-        console.log( device.instanceId, device.name, "unknown type", device.type);
-        console.log( device );
+        logger.info(device.instanceId, device.name, "unknown type", device.type);
+        logger.info(device);
+        break;
     }
 }
 
-function findDevice( tradfri, deviceNameOrId ) {
-    const lowerName = deviceNameOrId.toLowerCase();
-
-    for( const deviceId in tradfri.devices ) {
-        if( deviceId === deviceNameOrId ) {
-            return tradfri.devices[deviceId];
-        }
-
-        if( tradfri.devices[deviceId].name.toLowerCase() === lowerName ) {
-            return tradfri.devices[deviceId];
-        }
-    }
-
-    return;
-}
-
-export default {printDeviceInfo, findDevice};
+export default printDeviceInfo;

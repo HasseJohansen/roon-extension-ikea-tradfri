@@ -19,7 +19,7 @@
     "linebreak-style": ["error", "unix"],
     "quotes": "off",
     "semi": ["error", "always"],
-    "no-console": "off",
+    "no-console": "error",
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "no-var": "error",
     "prefer-const": "error",

@@ -4,6 +4,7 @@
  */
 
 import delay from 'delay';
+import logger from './logger.js';
 import IkeaConnection from './connection.js';
 import {
     getStateValue,
@@ -25,9 +26,9 @@ export async function cleanupTradfriConnection() {
     if (tradfri) {
         try {
             await tradfri.destroy();
-            console.log("Tradfri connection cleaned up");
+            logger.info("Tradfri connection cleaned up");
         } catch (e) {
-            console.log("Error during tradfri cleanup:", e.message);
+            logger.error("Error during tradfri cleanup:", e.message);
         }
         setStateValue('tradfri', null);
     }
@@ -51,7 +52,7 @@ export function startGatewayMonitor() {
 
             // If gateway has been discovered before, try to reconnect
             if (getStateValue('gatewayDiscovered')) {
-                console.log("Attempting to reconnect to previously discovered gateway...");
+                logger.info("Attempting to reconnect to previously discovered gateway...");
                 setStateValue('ikeaDevices', []);
                 const mysettings = getSettings();
                 await getIkeaDevices(mysettings.ikeagwkey);
@@ -59,10 +60,10 @@ export function startGatewayMonitor() {
             }
 
             // Gateway not yet discovered - start discovery
-            console.log("Starting gateway discovery...");
+            logger.info("Starting gateway discovery...");
             await getIkeaDevices();
         } catch (err) {
-            console.log("IKEA gateway check failed:", err && err.message ? err.message : err);
+            logger.info("IKEA gateway check failed:", err && err.message ? err.message : err);
             updateState({
                 gatewayAvailable: false,
                 gatewayDiscovered: err.message && err.message.includes("Tradfri gateway not found") ? false : getStateValue('gatewayDiscovered')
@@ -81,7 +82,7 @@ export function startGatewayMonitor() {
 
     // Periodic check
     const timer = setInterval(checkGateway, GATEWAY_CHECK_INTERVAL_MS);
-    console.log(`Started IKEA gateway monitor, checking every ${GATEWAY_CHECK_INTERVAL_MS / 1000} seconds`);
+    logger.info(`Started IKEA gateway monitor, checking every ${GATEWAY_CHECK_INTERVAL_MS / 1000} seconds`);
     setStateValue('gatewayCheckTimer', timer);
 }
 
@@ -103,7 +104,7 @@ export function stopGatewayMonitor() {
 export async function getIkeaDevices(gwkey = "undefined") {
     // Prevent concurrent discovery attempts
     if (getStateValue('gatewayDiscovering')) {
-        console.log("Gateway discovery already in progress, skipping");
+        logger.info("Gateway discovery already in progress, skipping");
         return;
     }
 
@@ -136,7 +137,7 @@ export async function getIkeaDevices(gwkey = "undefined") {
                 }
                 // Short exponential backoff for quick attempts
                 const delayMs = Math.min(BASE_RETRY_DELAY_MS * Math.pow(2, attempt), MAX_RETRY_DELAY_MS);
-                console.log(`Tradfri gateway not found, retrying in ${delayMs / 1000} seconds (attempt ${attempt + 1}/${MAX_DISCOVERY_ATTEMPTS + 1})...`);
+                logger.info(`Tradfri gateway not found, retrying in ${delayMs / 1000} seconds (attempt ${attempt + 1}/${MAX_DISCOVERY_ATTEMPTS + 1})...`);
                 await delay(delayMs);
             }
         }
@@ -154,9 +155,9 @@ export async function getIkeaDevices(gwkey = "undefined") {
                     authFailed: true,
                     gatewayDiscovered: true // Gateway was found via bonjour
                 });
-                console.log("Authentication failed - security code required");
+                logger.info("Authentication failed - security code required");
             } else {
-                console.log("IKEA gateway found but not connected (no credentials or connection failed)");
+                logger.info("IKEA gateway found but not connected (no credentials or connection failed)");
             }
         } else if (result && result.tradfri) {
             updateState({
@@ -176,7 +177,7 @@ export async function getIkeaDevices(gwkey = "undefined") {
                 const newSettings = getSettings();
                 delete newSettings.ikeagwkey;
                 updateSettings(newSettings);
-                console.log("Saved new Tradfri credentials to Roon config");
+                logger.info("Saved new Tradfri credentials to Roon config");
             }
 
             const tradfri = result.tradfri;
@@ -197,7 +198,7 @@ export async function getIkeaDevices(gwkey = "undefined") {
             setStateValue('ikeaDevices', devices);
         }
     } catch (err) {
-        console.log("Error in get_ikea_devices after attempts:", err && err.message ? err.message : err);
+        logger.info("Error in get_ikea_devices after attempts:", err && err.message ? err.message : err);
         updateState({
             gatewayAvailable: false,
             firstRun: true
@@ -212,7 +213,7 @@ export async function getIkeaDevices(gwkey = "undefined") {
                 tradfri_identity: null,
                 tradfri_psk: null
             });
-            console.log("Authentication failed - cleared invalid credentials");
+            logger.info("Authentication failed - cleared invalid credentials");
         }
         // Only set gateway_discovered to false if gateway is not on the network
         else if (err.message && err.message.includes("Tradfri gateway not found")) {
@@ -231,7 +232,7 @@ export async function getIkeaDevices(gwkey = "undefined") {
 export async function turnIkeaDevice(cmd, deviceid) {
     const tradfri = getStateValue('tradfri');
     if (!tradfri || !tradfri.devices) {
-        console.log("Cannot turn device - tradfri not connected");
+        logger.info("Cannot turn device - tradfri not connected");
         return;
     }
 

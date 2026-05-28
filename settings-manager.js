@@ -10,6 +10,7 @@ import {
     updateSettings as updateStateSettings
 } from './state.js';
 import { getIkeaDevices } from './tradfri-manager.js';
+import logger from './logger.js';
 import RoonApiSettings from 'node-roon-api-settings';
 
 /**
@@ -75,7 +76,7 @@ export function makeLayout(settings) {
 
         return l;
     } catch (err) {
-        console.log("Error in makeLayout:", err && err.message ? err.message : err);
+        logger.info("Error in makeLayout:", err && err.message ? err.message : err);
         return {
             values: {},
             layout: [{
@@ -130,7 +131,7 @@ export function createSettingsService(roon) {
 
                 cb(makeLayout(mysettings || {}));
             } catch (err) {
-                console.log("Error in get_settings:", err && err.message ? err.message : err);
+                logger.info("Error in get_settings:", err && err.message ? err.message : err);
                 cb({
                     values: {},
                     layout: [],
@@ -203,7 +204,7 @@ export function createSettingsService(roon) {
                         // Force UI refresh by updating settings
                         updateStateSettings(l.values);
                     }).catch(err => {
-                        console.log('Failed to connect to gateway:', err && err.message ? err.message : err);
+                        logger.info('Failed to connect to gateway:', err && err.message ? err.message : err);
                         // Connection failed - set auth_failed so user can retry with new security code
                         setStateValue('firstRun', true);
                         setStateValue('authFailed', true);
@@ -212,7 +213,7 @@ export function createSettingsService(roon) {
                     });
                 }
             } catch (err) {
-                console.log("Error in save_settings:", err && err.message ? err.message : err);
+                logger.info("Error in save_settings:", err && err.message ? err.message : err);
                 req.send_complete("NotValid", { settings: {
                     values: {},
                     layout: [{
@@ -253,7 +254,7 @@ export function updateStatus(svc_status) {
             svc_status.set_status("First run. Please update settings");
         }
     } catch (err) {
-        console.log("Error in updateStatus:", err && err.message ? err.message : err);
+        logger.info("Error in updateStatus:", err && err.message ? err.message : err);
         svc_status.set_status("Error: " + (err && err.message ? err.message : "Unknown error"));
     }
 }

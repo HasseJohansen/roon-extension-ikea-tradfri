@@ -9,7 +9,9 @@ jest.mock('node-tradfri-client', () => ({
 
 // Fail tests on undefined function/variable access
 // Wrap console.error to catch ReferenceErrors and similar issues
+// eslint-disable-next-line no-console
 const originalError = console.error.bind(console);
+// eslint-disable-next-line no-console
 console.error = function(...args) {
     originalError(...args);
     
