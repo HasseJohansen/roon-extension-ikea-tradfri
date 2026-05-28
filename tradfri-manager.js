@@ -9,6 +9,8 @@ import {
     getStateValue,
     setStateValue,
     updateState,
+    updateSettings,
+    getSettings,
     GATEWAY_CHECK_INTERVAL_MS,
     MAX_DISCOVERY_ATTEMPTS,
     BASE_RETRY_DELAY_MS,
@@ -247,10 +249,4 @@ export async function turnIkeaDevice(cmd, deviceid) {
     }
 }
 
-/**
- * Get current settings
- * @returns {Object}
- */
-export function getSettings() {
-    return getStateValue('mysettings') || {};
-}
+
