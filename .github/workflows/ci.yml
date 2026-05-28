@@ -43,14 +43,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check syntax
-        run: |
-          node --check app.js
-          node --check connection.js
-          node --check devices.js
-          node --check state.js
-          node --check tradfri-manager.js
-          node --check settings-manager.js
+      - name: Run unit tests
+        run: npm test
+
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-coverage
+          path: coverage/
 
   build:
     name: Build Docker image
