@@ -2,8 +2,11 @@
     "name": "roon-extension-ikea-tradfri",
     "type": "module",
     "version": "0.1.0",
-    "description": "Roon Extension for switching IKEA Trådfri smart switches",
+    "description": "Roon Extension for switching IKEA Tr\u00e5dfri smart switches",
     "main": "app.js",
+    "engines": {
+        "node": ">=16.0.0"
+    },
     "author": "Hasse Hagen Johansen",
     "license": "Apache-2.0",
     "scripts": {
@@ -13,12 +16,10 @@
         "@anujdatar/appconfig": "^2.2.0",
         "delay": "^7.0.0",
         "bonjour-service": "^1.2.1",
-        "fs": "",
         "node-roon-api": "github:roonlabs/node-roon-api",
         "node-roon-api-settings": "github:roonlabs/node-roon-api-settings",
         "node-roon-api-status": "github:roonlabs/node-roon-api-status",
         "node-roon-api-transport": "github:roonlabs/node-roon-api-transport",
-        "node-tradfri-client": "github:HasseJohansen/node-tradfri-client",
-        "path": "^0.12.7"
+        "node-tradfri-client": "github:HasseJohansen/node-tradfri-client"
     }
 }

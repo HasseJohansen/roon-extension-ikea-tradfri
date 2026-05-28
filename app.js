@@ -53,12 +53,15 @@ var roon = new RoonApi({
         });
     },
 
-    core_unpaired: function(core) {
+    core_unpaired: async function(core) {
         console.log(core.core_id,
 		    core.display_name,
 		    core.display_version,
 		    "-",
 		    "LOST");
+        // Cleanup resources when core is unpaired
+        stop_gateway_monitor();
+        await cleanupTradfriConnection();
     }
 });
 
@@ -340,7 +343,9 @@ const check_gateway = async () => {
         if (tradfri) {
             try {
                 await tradfri.destroy();
-            } catch (e) {}
+            } catch (e) {
+                console.log("Warning: Error during tradfri cleanup in check_gateway:", e.message);
+            }
             tradfri = null;
         }
         first_run = true;
@@ -361,6 +366,19 @@ const stop_gateway_monitor = () => {
     if (gateway_check_timer) {
         clearInterval(gateway_check_timer);
         gateway_check_timer = null;
+    }
+}
+
+// Helper function to cleanup tradfri connection
+const cleanupTradfriConnection = async () => {
+    if (tradfri) {
+        try {
+            await tradfri.destroy();
+            console.log("Tradfri connection cleaned up");
+        } catch (e) {
+            console.log("Error during tradfri cleanup:", e.message);
+        }
+        tradfri = null;
     }
 }
 
@@ -387,7 +405,7 @@ const get_ikea_devices = async (gwkey="undefined") => {
             try {
                 await tradfri.destroy();
             } catch (e) {
-                // Ignore errors during cleanup
+                console.log("Warning: Error during tradfri cleanup:", e.message);
             }
             tradfri = null;
         }
@@ -514,14 +532,19 @@ process.on('uncaughtException', (err) => {
     console.log('Uncaught Exception:', err && err.message ? err.message : err);
     // Try to recover by resetting state
     gateway_discovering = false;
+    stop_gateway_monitor();
     if (tradfri) {
-        try { tradfri.destroy(); } catch (e) {}
+        try {
+            tradfri.destroy();
+        } catch (e) {
+            console.log("Warning: Error during tradfri cleanup in uncaughtException:", e.message);
+        }
         tradfri = null;
     }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.log('Unhandled Rejection at:', promise, 'reason:', reason);
+    console.log('Unhandled Rejection at:', promise, 'reason:', reason && reason.message ? reason.message : reason);
 });
 
 // Start Roon discovery IMMEDIATELY - don't wait for Tradfri
