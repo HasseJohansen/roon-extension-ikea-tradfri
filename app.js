@@ -79,11 +79,11 @@ if (savedSettings.outputid) {
     setStateValue('outputId', savedSettings.outputid.output_id);
 }
 
-// Create settings service
-const svc_settings = createSettingsService(roon);
-
-// Create status service
+// Create status service first (needed by settings service)
 const svc_status = new RoonApiStatus(roon);
+
+// Create settings service with access to status service
+const svc_settings = createSettingsService(roon, svc_status);
 
 // Initialize services
 roon.init_services({

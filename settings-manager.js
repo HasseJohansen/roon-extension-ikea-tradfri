@@ -13,6 +13,9 @@ import { getIkeaDevices } from './tradfri-manager.js';
 import logger from './logger.js';
 import RoonApiSettings from 'node-roon-api-settings';
 
+// Module-level variable to store status service for updateStatus calls
+let statusService = null;
+
 /**
  * Create settings layout based on current state
  * @param {Object} settings - Current settings values
@@ -92,9 +95,13 @@ export function makeLayout(settings) {
 /**
  * Get settings handler for Roon API
  * @param {Object} roon - Roon API instance
+ * @param {Object} svc_status - Roon status service
  * @returns {Object} Settings service configuration
  */
-export function createSettingsService(roon) {
+export function createSettingsService(roon, svc_status) {
+    // Store status service for use in callbacks
+    statusService = svc_status;
+
     return new RoonApiSettings(roon, {
         get_settings: function(cb) {
             try {
@@ -184,6 +191,15 @@ export function createSettingsService(roon) {
                     roon.save_config("settings", getStateSettings());
                     req.send_complete(l.has_error ? "NotValid" : "Success", { settings: l });
                 } else {
+                    // Check if authentication is already in progress to avoid concurrent requests
+                    if (getStateValue('gatewayDiscovering')) {
+                        // Authentication already in progress - return current state
+                        const currentSettings = getStateSettings();
+                        const l = makeLayout(currentSettings);
+                        req.send_complete("Success", { settings: l });
+                        return;
+                    }
+
                     // User is providing a security code - authenticate first
                     setStateValue('firstRun', false);
                     setStateValue('authFailed', false);
@@ -206,6 +222,11 @@ export function createSettingsService(roon) {
                         
                         // Save to Roon config
                         roon.save_config("settings", updatedSettings);
+                        
+                        // Update status to reflect successful authentication
+                        if (statusService) {
+                            updateStatus(statusService);
+                        }
                         
                         req.send_complete("Success", { settings: l });
                     } catch (err) {
