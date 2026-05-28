@@ -59,6 +59,26 @@ const roon = new RoonApi({
                     });
                 }
             }
+            // Store zone names for status display - handle both initial subscription and changes
+            if (data.zones) {
+                // Initial subscription returns all zones
+                data.zones.forEach(zone => {
+                    zone.outputs.forEach(output => {
+                        if (output.output_id === getStateValue('outputId')) {
+                            setStateValue('zoneName', zone.display_name);
+                        }
+                    });
+                });
+            }
+            if (cmd === "Changed" && data.zones_changed) {
+                data.zones_changed.forEach(zone => {
+                    zone.outputs.forEach(output => {
+                        if (output.output_id === getStateValue('outputId')) {
+                            setStateValue('zoneName', zone.display_name);
+                        }
+                    });
+                });
+            }
         });
     },
 

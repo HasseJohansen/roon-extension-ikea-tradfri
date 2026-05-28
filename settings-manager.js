@@ -275,9 +275,15 @@ export function updateStatus(svc_status) {
         } else if (!gatewayDiscovered) {
             svc_status.set_status("IKEA gw not found");
         } else if (typeof mysettings.outputid !== "undefined" && mysettings.ikeaplug !== null) {
+            // Get zone name from state
+            const zoneName = getStateValue('zoneName');
             const deviceName = (ikeaDevices || []).find(device => device.value === mysettings.ikeaplug);
-            if (deviceName && deviceName.title) {
-                svc_status.set_status(mysettings.outputid.name + " set to: " + deviceName.title, false);
+            if (zoneName && deviceName && deviceName.title) {
+                svc_status.set_status(zoneName + " set to: " + deviceName.title, false);
+            } else if (zoneName) {
+                svc_status.set_status(zoneName + " configured", false);
+            } else if (deviceName && deviceName.title) {
+                svc_status.set_status("Configured for: " + deviceName.title, false);
             } else {
                 svc_status.set_status("Configured but device not found");
             }

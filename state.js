@@ -6,6 +6,7 @@
 // Initial state
 const initialState = {
     outputId: "",
+    zoneName: null,
     ikeaDevices: [],
     tradfri: null,
     firstRun: true,
