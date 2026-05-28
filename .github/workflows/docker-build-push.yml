@@ -78,7 +78,7 @@ jobs:
 
       - name: Build and push (main branch)
         if: github.event_name == 'workflow_run'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
@@ -87,7 +87,7 @@ jobs:
 
       - name: Build and push (release)
         if: github.event_name == 'release'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
