@@ -7,6 +7,7 @@
 const initialState = {
     outputId: "",
     zoneName: null,
+    allZones: [],
     ikeaDevices: [],
     tradfri: null,
     firstRun: true,

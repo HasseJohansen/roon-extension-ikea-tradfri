@@ -177,8 +177,25 @@ export function createSettingsService(roon, svc_status) {
                 }
 
                 if (req.body.settings) {
-                    if (req.body.settings.values["outputid"] && getStateValue('firstRun') === false) {
+                    if (req.body.settings.values["outputid"]) {
                         setStateValue('outputId', req.body.settings.values["outputid"].output_id);
+                        // Trigger zone name update
+                        const outputId = getStateValue('outputId');
+                        const allZones = getStateValue('allZones');
+                        if (outputId && allZones && allZones.length > 0) {
+                            for (const zone of allZones) {
+                                for (const output of zone.outputs) {
+                                    if (output.output_id === outputId) {
+                                        setStateValue('zoneName', zone.display_name);
+                                        // Update status to reflect the change
+                                        if (statusService) {
+                                            updateStatus(statusService);
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 

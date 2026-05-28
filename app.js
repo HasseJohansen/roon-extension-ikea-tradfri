@@ -27,6 +27,27 @@ import {
 
 import { createSettingsService, updateStatus } from './settings-manager.js';
 
+/**
+ * Update zoneName state based on current outputId and stored zones
+ */
+function updateZoneName() {
+    const outputId = getStateValue('outputId');
+    const allZones = getStateValue('allZones');
+    
+    if (!outputId || !allZones || allZones.length === 0) {
+        return;
+    }
+    
+    for (const zone of allZones) {
+        for (const output of zone.outputs) {
+            if (output.output_id === outputId) {
+                setStateValue('zoneName', zone.display_name);
+                return;
+            }
+        }
+    }
+}
+
 // Load version from package.json - single source of truth
 const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
@@ -59,26 +80,26 @@ const roon = new RoonApi({
                     });
                 }
             }
-            // Store zone names for status display - handle both initial subscription and changes
+            // Store all zones for status display - handle both initial subscription and changes
             if (data.zones) {
-                // Initial subscription returns all zones
-                data.zones.forEach(zone => {
-                    zone.outputs.forEach(output => {
-                        if (output.output_id === getStateValue('outputId')) {
-                            setStateValue('zoneName', zone.display_name);
-                        }
-                    });
-                });
+                // Initial subscription returns all zones - store them all
+                setStateValue('allZones', data.zones);
             }
             if (cmd === "Changed" && data.zones_changed) {
-                data.zones_changed.forEach(zone => {
-                    zone.outputs.forEach(output => {
-                        if (output.output_id === getStateValue('outputId')) {
-                            setStateValue('zoneName', zone.display_name);
-                        }
-                    });
+                // Update stored zones with changes
+                const currentZones = getStateValue('allZones') || [];
+                data.zones_changed.forEach(changedZone => {
+                    const index = currentZones.findIndex(z => z.zone_id === changedZone.zone_id);
+                    if (index >= 0) {
+                        currentZones[index] = changedZone;
+                    } else {
+                        currentZones.push(changedZone);
+                    }
                 });
+                setStateValue('allZones', currentZones);
             }
+            // Update zoneName based on current outputId
+            updateZoneName();
         });
     },
 
