@@ -104,3 +104,100 @@ I also have a real Roon endpoint where Roon correctly sets the status
 to "standby" when in standby (even though roon says standby_supported:
 false on that endpoint - so status/state is really not implemented
 well in roon/roon api)
+
+------------
+## Troubleshooting
+
+### Gateway Not Found
+- **Issue**: The extension reports "IKEA gw not found"
+- **Solution**: 
+  - Ensure your IKEA Tradfri gateway is powered on and connected to the network
+  - Verify the gateway is on the same network as the machine running the extension
+  - Check that your network allows multicast/bonjour discovery (required for gateway detection)
+  - Restart the gateway by unplugging it for 10 seconds
+
+### Authentication Failed
+- **Issue**: "Authentication failed. Please re-enter security code"
+- **Solution**:
+  - The security code is on the back of your IKEA Tradfri gateway
+  - Ensure you're entering the code correctly (it's case-sensitive)
+  - If you've previously paired the gateway with another app, you may need to reset it
+  - To reset: Press and hold the link button on the gateway for 10+ seconds until the LED blinks amber
+
+### Devices Not Showing Up
+- **Issue**: No devices appear in the dropdown after successful authentication
+- **Solution**:
+  - Ensure your IKEA smart plugs/switches are properly added to the gateway
+  - Check that the devices are powered on
+  - Wait a few minutes and refresh the extension settings
+  - Try restarting the extension
+
+### Connection Drops Frequently
+- **Issue**: The extension loses connection to the gateway
+- **Solution**:
+  - Check your network stability
+  - Ensure the gateway and extension host are on the same subnet
+  - Try reducing network interference by moving devices closer to the router
+  - Check for IP address conflicts on your network
+
+### Extension Not Appearing in Roon
+- **Issue**: The extension doesn't show up in Roon's Extensions list
+- **Solution**:
+  - Ensure Node.js is installed and the extension is running (`node .`)
+  - Check that no firewall is blocking the extension's port
+  - Verify Roon Core is on the same network
+  - Restart Roon and try again
+  - Check the console output for errors
+
+### Logs and Debugging
+To enable verbose logging for troubleshooting:
+```bash
+# Set LOG_LEVEL environment variable before starting
+LOG_LEVEL=debug node .
+```
+
+This will output detailed debug information to the console.
+
+------------
+## Docker Deployment
+
+The extension can be run in a Docker container for easier deployment:
+
+### Using Docker Compose
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+services:
+  roon-tradfri:
+    image: ghcr.io/hassejohansen/roon-extension-ikea-tradfri:latest
+    container_name: roon-tradfri
+    restart: unless-stopped
+    network_mode: host  # Required for Roon discovery and IKEA gateway access
+    volumes:
+      - ./roon-config:/app/.reg  # Persist Roon pairing state
+    environment:
+      - LOG_LEVEL=info
+```
+
+Run with:
+```bash
+docker-compose up -d
+```
+
+### Using Docker CLI
+
+```bash
+docker run -d \
+  --name roon-tradfri \
+  --restart unless-stopped \
+  --network host \
+  -v $(pwd)/roon-config:/app/.reg \
+  -e LOG_LEVEL=info \
+  ghcr.io/hassejohansen/roon-extension-ikea-tradfri:latest
+```
+
+**Note**: The `--network host` flag is required for:
+- Roon Core discovery (uses multicast)
+- IKEA Tradfri gateway discovery (uses bonjour/mDNS)

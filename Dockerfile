@@ -1,13 +1,45 @@
-FROM alpine:3.23.4
+# Dockerfile for Roon IKEA Tradfri Extension
+# Multi-stage build for smaller final image
 
-RUN addgroup -g 1000 node && adduser -u 1000 -G node -s /bin/sh -D node && apk add --no-cache nodejs
+# Build stage
+FROM node:18-alpine AS builder
 
-WORKDIR /home/node
+WORKDIR /app
 
-COPY app.js package.json connection.js devices.js LICENSE /home/node/
+# Copy package files
+COPY package*.json ./
 
-RUN apk add --no-cache git npm && npm install && apk del git npm
+# Install all dependencies (including dev for build)
+RUN npm ci
 
-USER node
+# Production stage
+FROM node:18-alpine
 
-CMD [ "node", "." ]
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Copy from builder (production dependencies only)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application files
+COPY app.js connection.js devices.js state.js tradfri-manager.js settings-manager.js ./
+COPY package*.json ./
+COPY LICENSE ./
+
+# Change ownership to non-root user
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port (Roon uses 9100-9200 for extensions)
+EXPOSE 9100-9200
+
+# Set environment variables
+ENV NODE_ENV=production
+
+# Start the extension
+CMD ["node", "app.js"]
