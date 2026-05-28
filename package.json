@@ -10,7 +10,12 @@
     "author": "Hasse Hagen Johansen",
     "license": "Apache-2.0",
     "scripts": {
-        "update-registry-version": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=' + pkg.version); fs.writeFileSync('.reg/settings', reg); console.log('Updated .reg/settings with version', pkg.version);\""
+        "update-registry-version": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=' + pkg.version); fs.writeFileSync('.reg/settings', reg); console.log('Updated .reg/settings with version', pkg.version);\"",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix"
+    },
+    "devDependencies": {
+        "eslint": "^8.56.0"
     },
     "dependencies": {
         "@anujdatar/appconfig": "^2.2.0",

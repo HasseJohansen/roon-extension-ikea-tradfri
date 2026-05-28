@@ -57,7 +57,7 @@ Device Control category and perform the Update action.
 
 1. Change directory to the extension in the local folder:
     ```
-    cd <local_folder>/roon-extension-alarm-clock
+    cd <local_folder>/roon-extension-ikea-tradfri
     ```
     *Replace `<local_folder>` with the local folder path.*
 
