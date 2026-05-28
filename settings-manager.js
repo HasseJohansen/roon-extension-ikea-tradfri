@@ -175,42 +175,52 @@ export function createSettingsService(roon) {
                     }
                 }
 
-                const l = makeLayout(settings.values);
-                req.send_complete(l.has_error ? "NotValid" : "Success", { settings: l });
+                const gwkey = settings && settings.values ? settings.values.ikeagwkey : undefined;
 
-                if (!l.has_error && getStateValue('firstRun') === false) {
-                    // Keep ikeagwkey in memory for reconnection attempts
-                    // It will be deleted after successful Tradfri authentication
+                if (!gwkey) {
+                    // No security code provided - this is a normal settings save (not first run auth)
+                    const l = makeLayout(settings.values);
                     updateStateSettings(l.values);
-                    // Save to Roon config
                     roon.save_config("settings", getStateSettings());
+                    req.send_complete(l.has_error ? "NotValid" : "Success", { settings: l });
                 } else {
+                    // User is providing a security code - authenticate first
                     setStateValue('firstRun', false);
-                    setStateValue('authFailed', false); // Clear auth failure flag when user tries again
+                    setStateValue('authFailed', false);
 
                     // Save the security code to settings for reconnection attempts
-                    if (settings && settings.values && settings.values.ikeagwkey) {
-                        updateStateSettings({ ikeagwkey: settings.values.ikeagwkey });
-                    }
+                    updateStateSettings({ ikeagwkey: gwkey });
 
-                    const gwkey = settings && settings.values ? settings.values.ikeagwkey : undefined;
-                    await getIkeaDevices(gwkey).then(() => {
-                        // Connection succeeded - update state and refresh UI
+                    try {
+                        await getIkeaDevices(gwkey);
+                        
+                        // Connection succeeded - update state
                         setStateValue('firstRun', false);
                         setStateValue('authFailed', false);
                         setStateValue('gatewayDiscovered', true);
                         setStateValue('gatewayAvailable', true);
 
-                        // Force UI refresh by updating settings
-                        updateStateSettings(l.values);
-                    }).catch(err => {
+                        // Create layout with updated settings (now includes tradfri_identity and tradfri_psk)
+                        const updatedSettings = getStateSettings();
+                        const l = makeLayout(updatedSettings);
+                        
+                        // Save to Roon config
+                        roon.save_config("settings", updatedSettings);
+                        
+                        req.send_complete("Success", { settings: l });
+                    } catch (err) {
                         logger.info('Failed to connect to gateway:', err && err.message ? err.message : err);
                         // Connection failed - set auth_failed so user can retry with new security code
                         setStateValue('firstRun', true);
                         setStateValue('authFailed', true);
                         setStateValue('gatewayAvailable', false);
                         setStateValue('gatewayDiscovered', false);
-                    });
+                        updateSettings({ tradfri_identity: null, tradfri_psk: null });
+
+                        // Show error layout
+                        const l = makeLayout(settings.values);
+                        req.send_complete("NotValid", { settings: l });
+                    }
                 }
             } catch (err) {
                 logger.info("Error in save_settings:", err && err.message ? err.message : err);
