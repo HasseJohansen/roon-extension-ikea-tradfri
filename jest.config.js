@@ -3,7 +3,6 @@ export default {
     testEnvironment: 'node',
     transform: {},
     moduleNameMapper: {
-        // eslint-disable-next-line no-useless-escape
         '^(\./.*)\.js$': '$1',
     },
     testMatch: ['**/__tests__/**/*.test.js'],
