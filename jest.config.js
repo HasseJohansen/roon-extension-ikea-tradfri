@@ -2,9 +2,7 @@
 export default {
   testEnvironment: 'node',
   transform: {},
-  transformIgnorePatterns: [
-    'node_modules/(?!(node-tradfri-client)/)',
-  ],
+  extensionsToTreatAsEsm: ['.js'],
   moduleNameMapper: {
     '^(\.{1,2}/.*)\.js$': '$1',
   },
