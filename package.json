@@ -1,24 +1,36 @@
 {
     "name": "roon-extension-ikea-tradfri",
     "type": "module",
-    "version": "0.1.0",
+    "version": "0.2.0-test",
     "description": "Roon Extension for switching IKEA Trådfri smart switches",
     "main": "app.js",
+    "engines": {
+        "node": ">=16.0.0"
+    },
     "author": "Hasse Hagen Johansen",
     "license": "Apache-2.0",
     "scripts": {
-        "update-registry-version": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=' + pkg.version); fs.writeFileSync('.reg/settings', reg); console.log('Updated .reg/settings with version', pkg.version);\""
+        "update-registry-version": "node -e \"const pkg = require('./package.json'); const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=' + pkg.version); fs.writeFileSync('.reg/settings', reg); console.log('Updated .reg/settings with version', pkg.version);\"",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "test": "node --experimental-vm-modules node_modules/.bin/jest",
+        "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+        "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage"
+    },
+    "devDependencies": {
+        "eslint": "^8.56.0",
+        "eslint-plugin-jest": "^29.15.2",
+        "jest": "^30.4.2"
     },
     "dependencies": {
         "@anujdatar/appconfig": "^2.2.0",
-        "delay": "^7.0.0",
         "bonjour-service": "^1.2.1",
-        "fs": "",
+        "delay": "^7.0.0",
         "node-roon-api": "github:roonlabs/node-roon-api",
         "node-roon-api-settings": "github:roonlabs/node-roon-api-settings",
         "node-roon-api-status": "github:roonlabs/node-roon-api-status",
         "node-roon-api-transport": "github:roonlabs/node-roon-api-transport",
         "node-tradfri-client": "github:HasseJohansen/node-tradfri-client",
-        "path": "^0.12.7"
+        "pino": "^10.3.1"
     }
 }

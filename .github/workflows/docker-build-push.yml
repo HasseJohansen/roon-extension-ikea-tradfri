@@ -1,0 +1,92 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Get latest release version (for main branch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: get-latest-release
+        run: |
+          # Get the latest release tag
+          RELEASE_TAG=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest" | \
+            jq -r '.tag_name' 2>/dev/null || echo "")
+          
+          # Strip v prefix if present
+          if [ -n "$RELEASE_TAG" ]; then
+            VERSION=${RELEASE_TAG#v}
+            echo "release_version=${VERSION}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set test version and update files (for main branch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: set-test-version
+        run: |
+          # Use latest release version with -test suffix
+          if [ -n "${{ steps.get-latest-release.outputs.release_version }}" ]; then
+            TEST_VERSION="${{ steps.get-latest-release.outputs.release_version }}-test"
+          else
+            # Fallback to existing version
+            TEST_VERSION=$(node -p "require('./package.json').version")
+          fi
+          
+          echo "version=${TEST_VERSION}" >> $GITHUB_OUTPUT
+          
+          # Update package.json
+          node -e "const fs = require('fs'); let pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.version = '${TEST_VERSION}'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');"
+          # Update .reg/settings
+          node -e "const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=${TEST_VERSION}'); fs.writeFileSync('.reg/settings', reg);"
+
+      - name: Set release version and update files
+        if: github.event_name == 'release'
+        id: set-release-version
+        run: |
+          # Strip v prefix from release tag
+          TAG=${{ github.event.release.tag_name }}
+          VERSION=${TAG#v}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          
+          # Update package.json
+          node -e "const fs = require('fs'); let pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); pkg.version = '${VERSION}'; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');"
+          # Update .reg/settings
+          node -e "const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=${VERSION}'); fs.writeFileSync('.reg/settings', reg);"
+
+      - name: Build and push (push to main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: hassejohansen/roon-extension-ikea-tradfri:latest
+
+      - name: Build and push (release)
+        if: github.event_name == 'release'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            hassejohansen/roon-extension-ikea-tradfri:${{ github.event.release.tag_name }}
+            hassejohansen/roon-extension-ikea-tradfri:latest

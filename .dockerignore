@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# npm
+npm-debug.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test
+.coverage/
+
+# Build artifacts
+build/
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Documentation
+*.md
+
+# Registry
+.reg/
