@@ -11,6 +11,7 @@ import {
     updateSettings as updateStateSettings
 } from './state.js';
 import { getIkeaDevices, cleanupTradfriConnection } from './tradfri-manager.js';
+import RoonApiSettings from 'node-roon-api-settings';
 
 /**
  * Create settings layout based on current state
@@ -94,7 +95,7 @@ export function makeLayout(settings) {
  * @returns {Object} Settings service configuration
  */
 export function createSettingsService(roon) {
-    return new roon.services.RoonApiSettings(roon, {
+    return new RoonApiSettings(roon, {
         get_settings: function(cb) {
             try {
                 const authFailed = getStateValue('authFailed');

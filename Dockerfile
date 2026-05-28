@@ -19,7 +19,11 @@ WORKDIR /app
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+    adduser -S nodejs -u 1001 -h /home/nodejs
+
+# Create writable config directory and /home/node for compatibility
+RUN mkdir -p /app/config /home/nodejs/.config /home/node && \
+    chown -R nodejs:nodejs /app /home/nodejs /home/node
 
 # Copy from builder (production dependencies only)
 COPY --from=builder /app/node_modules ./node_modules
@@ -40,6 +44,7 @@ EXPOSE 9100-9200
 
 # Set environment variables
 ENV NODE_ENV=production
+ENV HOME=/home/nodejs
 
 # Start the extension
 CMD ["node", "app.js"]
