@@ -125,10 +125,10 @@ describe('State Management', () => {
     });
 
     describe('Constants', () => {
-        it('should export constants', () => {
-            const { GATEWAY_CHECK_INTERVAL_MS, MAX_DISCOVERY_ATTEMPTS } = require('../state.js');
-            expect(GATEWAY_CHECK_INTERVAL_MS).toBe(60000);
-            expect(MAX_DISCOVERY_ATTEMPTS).toBe(3);
+        it('should export constants', async () => {
+            const stateModule = await import('../state.js');
+            expect(stateModule.GATEWAY_CHECK_INTERVAL_MS).toBe(60000);
+            expect(stateModule.MAX_DISCOVERY_ATTEMPTS).toBe(3);
         });
     });
 });

@@ -2,6 +2,7 @@
  * Tests for settings-manager.js module
  */
 
+import { jest } from '@jest/globals';
 import { makeLayout } from '../settings-manager.js';
 import {
     getStateValue,
@@ -78,17 +79,13 @@ describe('Settings Manager', () => {
             expect(deviceMsg.readonly).toBe(true);
         });
 
-        it('should handle errors gracefully', () => {
-            // Mock console.log to check error logging
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-            // Force an error by passing null
+        it('should handle null settings gracefully', () => {
+            // Passing null should not cause an error due to settings || {} fallback
             const layout = makeLayout(null);
 
-            expect(layout.has_error).toBe(true);
-            expect(consoleSpy).toHaveBeenCalled();
-
-            consoleSpy.mockRestore();
+            expect(layout.has_error).toBe(false);
+            expect(layout.values).toEqual({});
+            expect(layout.layout).toBeDefined();
         });
     });
 });

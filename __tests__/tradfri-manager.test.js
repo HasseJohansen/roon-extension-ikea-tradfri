@@ -2,6 +2,7 @@
  * Tests for tradfri-manager.js module
  */
 
+import { jest } from '@jest/globals';
 import {
     cleanupTradfriConnection,
     stopGatewayMonitor,
@@ -58,13 +59,16 @@ describe('Tradfri Manager', () => {
 
     describe('stopGatewayMonitor', () => {
         it('should clear the gateway check timer', () => {
-            const mockTimer = { clear: jest.fn() };
+            const mockTimer = 123; // setInterval returns a number
             setStateValue('gatewayCheckTimer', mockTimer);
+            const clearIntervalSpy = jest.spyOn(global, 'clearInterval').mockImplementation(() => {});
 
             stopGatewayMonitor();
 
-            expect(mockTimer.clear).toHaveBeenCalled();
+            expect(clearIntervalSpy).toHaveBeenCalledWith(mockTimer);
             expect(getStateValue('gatewayCheckTimer')).toBeNull();
+
+            clearIntervalSpy.mockRestore();
         });
 
         it('should do nothing when timer is null', () => {

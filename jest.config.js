@@ -2,7 +2,6 @@
 export default {
   testEnvironment: 'node',
   transform: {},
-  extensionsToTreatAsEsm: ['.js'],
   moduleNameMapper: {
     '^(\.{1,2}/.*)\.js$': '$1',
   },
@@ -18,4 +17,6 @@ export default {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
   verbose: true,
+  transformIgnorePatterns: ['node_modules/'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };
