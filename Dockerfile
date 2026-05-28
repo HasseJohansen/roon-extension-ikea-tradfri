@@ -29,7 +29,7 @@ RUN mkdir -p /app/config /home/nodejs/.config /home/node && \
 COPY --from=builder /app/node_modules ./node_modules
 
 # Copy application files
-COPY app.js connection.js devices.js state.js tradfri-manager.js settings-manager.js ./
+COPY app.js connection.js devices.js logger.js state.js tradfri-manager.js settings-manager.js ./
 COPY package*.json ./
 COPY LICENSE ./
 
