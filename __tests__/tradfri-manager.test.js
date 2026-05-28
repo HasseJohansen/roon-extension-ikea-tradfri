@@ -8,12 +8,7 @@ import {
     stopGatewayMonitor,
     turnIkeaDevice
 } from '../tradfri-manager.js';
-import {
-    getStateValue,
-    setStateValue,
-    updateState,
-    resetState
-} from '../state.js';
+import { getStateValue, setStateValue, resetState } from '../state.js';
 
 // Mock the IkeaConnection module
 jest.mock('../connection.js', () => ({

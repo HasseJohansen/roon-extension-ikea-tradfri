@@ -19,6 +19,7 @@
     },
     "devDependencies": {
         "eslint": "^8.56.0",
+        "eslint-plugin-jest": "^29.15.2",
         "jest": "^30.4.2"
     },
     "dependencies": {
@@ -29,6 +30,7 @@
         "node-roon-api-settings": "github:roonlabs/node-roon-api-settings",
         "node-roon-api-status": "github:roonlabs/node-roon-api-status",
         "node-roon-api-transport": "github:roonlabs/node-roon-api-transport",
-        "node-tradfri-client": "github:HasseJohansen/node-tradfri-client"
+        "node-tradfri-client": "github:HasseJohansen/node-tradfri-client",
+        "pino": "^10.3.1"
     }
 }

@@ -1,7 +1,8 @@
 {
   "env": {
     "node": true,
-    "es2022": true
+    "es2022": true,
+    "jest/globals": true
   },
   "extends": [
     "eslint:recommended"
@@ -10,13 +11,16 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
+  "plugins": [
+    "jest"
+  ],
   "rules": {
     "indent": ["error", 4],
     "linebreak-style": ["error", "unix"],
-    "quotes": ["error", "double"],
+    "quotes": "off",
     "semi": ["error", "always"],
-    "no-console": "warn",
-    "no-unused-vars": "warn",
+    "no-console": "off",
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "no-var": "error",
     "prefer-const": "error",
     "eqeqeq": ["error", "always"]

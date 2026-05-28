@@ -6,11 +6,10 @@
 import {
     getStateValue,
     setStateValue,
-    updateState,
     getSettings as getStateSettings,
     updateSettings as updateStateSettings
 } from './state.js';
-import { getIkeaDevices, cleanupTradfriConnection } from './tradfri-manager.js';
+import { getIkeaDevices } from './tradfri-manager.js';
 import RoonApiSettings from 'node-roon-api-settings';
 
 /**
@@ -243,7 +242,7 @@ export function updateStatus(svc_status) {
             svc_status.set_status("Authentication failed. Please re-enter security code");
         } else if (!gatewayDiscovered) {
             svc_status.set_status("IKEA gw not found");
-        } else if (typeof mysettings.outputid !== "undefined" && mysettings.ikeaplug != null) {
+        } else if (typeof mysettings.outputid !== "undefined" && mysettings.ikeaplug !== null) {
             const deviceName = (ikeaDevices || []).find(device => device.value === mysettings.ikeaplug);
             if (deviceName && deviceName.title) {
                 svc_status.set_status(mysettings.outputid.name + " set to: " + deviceName.title, false);

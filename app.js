@@ -13,8 +13,7 @@ import {
     setStateValue,
     updateState,
     getSettings,
-    updateSettings,
-    resetState
+    updateSettings
 } from './state.js';
 
 import {
@@ -25,7 +24,7 @@ import {
     turnIkeaDevice
 } from './tradfri-manager.js';
 
-import { makeLayout, createSettingsService, updateStatus } from './settings-manager.js';
+import { createSettingsService, updateStatus } from './settings-manager.js';
 
 // Load version from package.json - single source of truth
 const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));

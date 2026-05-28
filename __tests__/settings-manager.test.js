@@ -2,14 +2,8 @@
  * Tests for settings-manager.js module
  */
 
-import { jest } from '@jest/globals';
 import { makeLayout } from '../settings-manager.js';
-import {
-    getStateValue,
-    setStateValue,
-    updateState,
-    resetState
-} from '../state.js';
+import { setStateValue, resetState } from '../state.js';
 
 describe('Settings Manager', () => {
     beforeEach(() => {
