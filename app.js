@@ -108,6 +108,8 @@ const roon = new RoonApi({
         // Cleanup resources when core is unpaired
         stopGatewayMonitor();
         await cleanupTradfriConnection();
+        // Restart gateway monitor to allow reconnection when core comes back
+        setTimeout(startGatewayMonitor, 5000);
     }
 });
 
@@ -153,6 +155,9 @@ process.on('uncaughtException', (err) => {
     setStateValue('gatewayDiscovering', false);
     cleanupTradfriConnection().catch(e => {
         logger.warn("Warning: Error during tradfri cleanup in uncaughtException:", e.message);
+    }).finally(() => {
+        // Restart gateway monitor after cleanup to allow reconnection
+        setTimeout(startGatewayMonitor, 5000);
     });
 });
 
@@ -167,6 +172,8 @@ roon.start_discovery();
 
 // Start Tradfri discovery in parallel - it will auto-retry on failure
 const mysettings = getSettings();
+// Update status to show scanning message before starting discovery
+updateStatus(svc_status);
 getIkeaDevices(mysettings.ikeagwkey).then(() => {
     updateStatus(svc_status);
 }).catch(err => {

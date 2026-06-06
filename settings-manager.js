@@ -225,6 +225,10 @@ export function createSettingsService(roon, svc_status) {
                     updateStateSettings({ ikeagwkey: gwkey });
 
                     try {
+                        // Show scanning status before starting discovery
+                        if (statusService) {
+                            updateStatus(statusService);
+                        }
                         await getIkeaDevices(gwkey);
                         
                         // Connection succeeded - update state
@@ -284,8 +288,15 @@ export function updateStatus(svc_status) {
     try {
         const authFailed = getStateValue('authFailed');
         const gatewayDiscovered = getStateValue('gatewayDiscovered');
+        const gatewayDiscovering = getStateValue('gatewayDiscovering');
         const mysettings = getStateSettings();
         const ikeaDevices = getStateValue('ikeaDevices');
+
+        // Show scanning message when actively discovering devices
+        if (gatewayDiscovering) {
+            svc_status.set_status("Scanning for IKEA devices...", false);
+            return;
+        }
 
         if (authFailed) {
             svc_status.set_status("Authentication failed. Please re-enter security code");

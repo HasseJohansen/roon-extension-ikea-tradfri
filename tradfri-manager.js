@@ -70,10 +70,7 @@ export function startGatewayMonitor() {
             });
             // Clear connection state on any error
             await cleanupTradfriConnection();
-            updateState({
-                firstRun: true,
-                ikeaDevices: []
-            });
+            // Don't reset firstRun and ikeaDevices - preserve state for reconnection attempts
         }
     };
 
