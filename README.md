@@ -202,3 +202,4 @@ docker run -d \
 - Roon Core discovery (uses multicast)
 - IKEA Tradfri gateway discovery (uses bonjour/mDNS)
 # PR trigger
+# Test workflow trigger
