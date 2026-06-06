@@ -1,11 +1,8 @@
 name: Build and Push Docker Image
 
 on:
-  workflow_run:
-    workflows: ["CI"]
+  push:
     branches: [main]
-    types:
-      - success
   release:
     types: [ published ]
 
@@ -28,8 +25,8 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Get latest release version (for main branch)
-        if: github.event_name == 'workflow_run' || github.event_name == 'release'
+      - name: Get latest release version
+        if: github.event_name == 'release' || github.event_name == 'push'
         id: get-latest-release
         run: |
           # Get the latest release tag
@@ -43,8 +40,8 @@ jobs:
             echo "release_version=${VERSION}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set test version and update files (for main branch)
-        if: github.event_name == 'workflow_run'
+      - name: Set test version and update files (for push to main)
+        if: github.event_name == 'push'
         id: set-test-version
         run: |
           # Use latest release version with -test suffix
@@ -77,7 +74,7 @@ jobs:
           node -e "const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=${VERSION}'); fs.writeFileSync('.reg/settings', reg);"
 
       - name: Build and push (main branch)
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v7
         with:
           context: .
