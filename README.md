@@ -203,3 +203,4 @@ docker run -d \
 - IKEA Tradfri gateway discovery (uses bonjour/mDNS)
 # PR trigger
 # Test workflow trigger
+# Dummy test
