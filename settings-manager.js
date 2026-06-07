@@ -293,6 +293,7 @@ export function updateStatus(svc_status) {
         const authFailed = getStateValue('authFailed');
         const gatewayDiscovered = getStateValue('gatewayDiscovered');
         const gatewayDiscovering = getStateValue('gatewayDiscovering');
+        const firstRun = getStateValue('firstRun');
         const mysettings = getStateSettings();
         const ikeaDevices = getStateValue('ikeaDevices');
 
@@ -304,6 +305,8 @@ export function updateStatus(svc_status) {
 
         if (authFailed) {
             svc_status.set_status("Authentication failed. Please re-enter security code");
+        } else if (firstRun) {
+            svc_status.set_status("Please enter IKEA gateway security code");
         } else if (!gatewayDiscovered) {
             svc_status.set_status("IKEA gw not found");
         } else if (typeof mysettings.outputid !== "undefined" && mysettings.ikeaplug !== null) {
