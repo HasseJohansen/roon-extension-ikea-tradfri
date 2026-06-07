@@ -114,8 +114,9 @@ export function createSettingsService(roon, svc_status) {
                 }
 
                 if (!gatewayDiscovered) {
-                    // If auth failed, show security code field instead of error
-                    if (authFailed) {
+                    // If auth failed or first run, show security code field instead of error
+                    const firstRun = getStateValue('firstRun');
+                    if (authFailed || firstRun) {
                         cb(makeLayout(getStateSettings() || {}));
                     } else {
                         // Return a minimal valid layout - empty settings
