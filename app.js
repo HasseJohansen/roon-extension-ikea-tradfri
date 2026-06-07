@@ -104,12 +104,21 @@ const roon = new RoonApi({
     },
 
     core_unpaired: async function(core) {
-        logger.info(`${core.core_id}, ${core.display_name}, ${core.display_version}, - LOST`);
-        // Cleanup resources when core is unpaired
-        stopGatewayMonitor();
-        await cleanupTradfriConnection();
-        // Restart gateway monitor to allow reconnection when core comes back
-        setTimeout(startGatewayMonitor, 5000);
+        try {
+            logger.info(`${core.core_id}, ${core.display_name}, ${core.display_version}, - LOST`);
+            // Cleanup resources when core is unpaired
+            stopGatewayMonitor();
+            await cleanupTradfriConnection();
+            // Restart gateway monitor to allow reconnection when core comes back
+            setTimeout(startGatewayMonitor, 5000);
+            // Restart Roon discovery to find the core again
+            setTimeout(() => {
+                logger.info('Restarting Roon discovery after core loss...');
+                roon.start_discovery();
+            }, 6000);
+        } catch (err) {
+            logger.error('Error in core_unpaired callback:', err && err.message ? err.message : err);
+        }
     }
 });
 
@@ -149,7 +158,7 @@ updateStatus(svc_status);
 
 // Global error handlers
 process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception:', err && err.message ? err.message : err);
+    logger.error('Uncaught Exception:', err && err.message ? err.message : err, err && err.stack ? '\n' + err.stack : '');
     // Try to recover by resetting state
     stopGatewayMonitor();
     setStateValue('gatewayDiscovering', false);
@@ -158,6 +167,11 @@ process.on('uncaughtException', (err) => {
     }).finally(() => {
         // Restart gateway monitor after cleanup to allow reconnection
         setTimeout(startGatewayMonitor, 5000);
+        // Also try to restart Roon discovery to reconnect to core
+        setTimeout(() => {
+            logger.info('Restarting Roon discovery after error...');
+            roon.start_discovery();
+        }, 6000);
     });
 });
 
@@ -172,7 +186,8 @@ roon.start_discovery();
 
 // Start Tradfri discovery in parallel - it will auto-retry on failure
 const mysettings = getSettings();
-// Update status to show scanning message before starting discovery
+// Set discovering state before starting discovery so status shows "Scanning..."
+setStateValue('gatewayDiscovering', true);
 updateStatus(svc_status);
 getIkeaDevices(mysettings.ikeagwkey).then(() => {
     updateStatus(svc_status);
