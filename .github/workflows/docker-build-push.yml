@@ -1,11 +1,8 @@
 name: Build and Push Docker Image
 
 on:
-  workflow_run:
-    workflows: ["CI"]
+  push:
     branches: [main]
-    types:
-      - completed
   release:
     types: [ published ]
 
@@ -13,13 +10,9 @@ jobs:
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    # Only run if the triggering workflow (CI) succeeded
-    if: ${{ github.event_name == 'release' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -31,7 +24,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Get latest release version
-        if: github.event_name == 'release' || github.event_name == 'workflow_run'
+        if: github.event_name == 'release' || github.event_name == 'push'
         id: get-latest-release
         run: |
           # Get the latest release tag
@@ -45,8 +38,8 @@ jobs:
             echo "release_version=${VERSION}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set test version and update files (for workflow_run to main)
-        if: github.event_name == 'workflow_run'
+      - name: Set test version and update files (for push to main)
+        if: github.event_name == 'push'
         id: set-test-version
         run: |
           # Use latest release version with -test suffix
@@ -79,7 +72,7 @@ jobs:
           node -e "const fs = require('fs'); let reg = fs.readFileSync('.reg/settings', 'utf8'); reg = reg.replace(/^VERSION=.*/m, 'VERSION=${VERSION}'); fs.writeFileSync('.reg/settings', reg);"
 
       - name: Build and push (main branch)
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v7
         with:
           context: .
