@@ -218,9 +218,6 @@ export function createSettingsService(roon, svc_status) {
                     }
 
                     // User is providing a security code - authenticate first
-                    setStateValue('firstRun', false);
-                    setStateValue('authFailed', false);
-
                     // Save the security code to settings for reconnection attempts
                     updateStateSettings({ ikeagwkey: gwkey });
 
@@ -232,6 +229,10 @@ export function createSettingsService(roon, svc_status) {
                             updateStatus(statusService);
                         }
                         await getIkeaDevices(gwkey);
+                        
+                        // Connection succeeded - update state
+                        setStateValue('firstRun', false);
+                        setStateValue('authFailed', false);
                         
                         // Connection succeeded - update state
                         setStateValue('firstRun', false);
