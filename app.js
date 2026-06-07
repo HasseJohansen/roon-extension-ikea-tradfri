@@ -186,9 +186,7 @@ roon.start_discovery();
 
 // Start Tradfri discovery in parallel - it will auto-retry on failure
 const mysettings = getSettings();
-// Set discovering state before starting discovery so status shows "Scanning..."
-setStateValue('gatewayDiscovering', true);
-updateStatus(svc_status);
+// getIkeaDevices will set gatewayDiscovering state and update status
 getIkeaDevices(mysettings.ikeagwkey).then(() => {
     updateStatus(svc_status);
 }).catch(err => {
