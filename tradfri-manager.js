@@ -55,24 +55,14 @@ export function startGatewayMonitor() {
             if (getStateValue('gatewayDiscovered')) {
                 logger.info("Attempting to reconnect to previously discovered gateway...");
                 setStateValue('ikeaDevices', []);
-                setStateValue('gatewayDiscovering', true);
                 const mysettings = getSettings();
-                try {
-                    await getIkeaDevices(mysettings.ikeagwkey);
-                } finally {
-                    setStateValue('gatewayDiscovering', false);
-                }
+                await getIkeaDevices(mysettings.ikeagwkey);
                 return;
             }
 
             // Gateway not yet discovered - start discovery
             logger.info("Starting gateway discovery...");
-            setStateValue('gatewayDiscovering', true);
-            try {
-                await getIkeaDevices();
-            } finally {
-                setStateValue('gatewayDiscovering', false);
-            }
+            await getIkeaDevices();
         } catch (err) {
             logger.info("IKEA gateway check failed:", err && err.message ? err.message : err);
             updateState({
