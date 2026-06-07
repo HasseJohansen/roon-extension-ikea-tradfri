@@ -186,17 +186,20 @@ roon.start_discovery();
 
 // Start Tradfri discovery in parallel - it will auto-retry on failure
 const mysettings = getSettings();
-// getIkeaDevices will set gatewayDiscovering state and update status
-getIkeaDevices(mysettings.ikeagwkey).then(() => {
-    updateStatus(svc_status);
-}).catch(err => {
-    logger.error('Tradfri discovery failed, will retry:', err && err.message ? err.message : err);
-    updateState({
-        gatewayAvailable: false,
-        gatewayDiscovered: err.message && err.message.includes("Tradfri gateway not found") ? false : getStateValue('gatewayDiscovered')
+// Only start discovery if we have credentials or are not on first run
+// On first run, wait for user to enter security code via settings
+if (!getStateValue('firstRun') || mysettings.ikeagwkey || mysettings.tradfri_identity) {
+    getIkeaDevices(mysettings.ikeagwkey).then(() => {
+        updateStatus(svc_status);
+    }).catch(err => {
+        logger.error('Tradfri discovery failed, will retry:', err && err.message ? err.message : err);
+        updateState({
+            gatewayAvailable: false,
+            gatewayDiscovered: err.message && err.message.includes("Tradfri gateway not found") ? false : getStateValue('gatewayDiscovered')
+        });
+        updateStatus(svc_status);
     });
-    updateStatus(svc_status);
-});
+}
 
 // Start periodic gateway monitoring
 startGatewayMonitor();
