@@ -46,7 +46,8 @@ export function startGatewayMonitor() {
 
         try {
             // If we already have a connection, nothing to check
-            if (getStateValue('gatewayAvailable') && getStateValue('tradfri')) {
+            const tradfri = getStateValue('tradfri');
+            if (getStateValue('gatewayAvailable') && tradfri) {
                 return;
             }
 
@@ -54,14 +55,24 @@ export function startGatewayMonitor() {
             if (getStateValue('gatewayDiscovered')) {
                 logger.info("Attempting to reconnect to previously discovered gateway...");
                 setStateValue('ikeaDevices', []);
+                setStateValue('gatewayDiscovering', true);
                 const mysettings = getSettings();
-                await getIkeaDevices(mysettings.ikeagwkey);
+                try {
+                    await getIkeaDevices(mysettings.ikeagwkey);
+                } finally {
+                    setStateValue('gatewayDiscovering', false);
+                }
                 return;
             }
 
             // Gateway not yet discovered - start discovery
             logger.info("Starting gateway discovery...");
-            await getIkeaDevices();
+            setStateValue('gatewayDiscovering', true);
+            try {
+                await getIkeaDevices();
+            } finally {
+                setStateValue('gatewayDiscovering', false);
+            }
         } catch (err) {
             logger.info("IKEA gateway check failed:", err && err.message ? err.message : err);
             updateState({
