@@ -179,7 +179,7 @@ export async function getIkeaDevices(gwkey = "undefined") {
             }
 
             const tradfri = result.tradfri;
-            tradfri.observeDevices();
+            await tradfri.observeDevices();
             await delay(5000);
 
             const devices = [];
