@@ -223,17 +223,8 @@ export function createSettingsService(roon, svc_status) {
                     updateStateSettings({ ikeagwkey: gwkey });
 
                     try {
-                        // Set discovering state before starting discovery so status shows "Scanning..."
-                        setStateValue('gatewayDiscovering', true);
-                        // Update status to show scanning message
-                        if (statusService) {
-                            updateStatus(statusService);
-                        }
+                        // getIkeaDevices will set gatewayDiscovering state and update status
                         await getIkeaDevices(gwkey);
-                        
-                        // Connection succeeded - update state
-                        setStateValue('firstRun', false);
-                        setStateValue('authFailed', false);
                         
                         // Connection succeeded - update state
                         setStateValue('firstRun', false);
