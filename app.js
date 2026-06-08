@@ -109,6 +109,16 @@ const roon = new RoonApi({
             // Cleanup resources when core is unpaired
             stopGatewayMonitor();
             await cleanupTradfriConnection();
+            
+            // Restore pairing state to allow reconnection to the same core
+            const roonstate = roon.load_config("roonstate") || {};
+            if (roonstate.paired_core_id) {
+                logger.info(`[DIAG] Restoring pairing state in core_unpaired: ${roonstate.paired_core_id}`);
+                roon.paired_core_id = roonstate.paired_core_id;
+                roon.paired_core = { core_id: roonstate.paired_core_id };
+                roon.is_paired = true;
+            }
+            
             // Restart gateway monitor to allow reconnection when core comes back
             setTimeout(startGatewayMonitor, 5000);
             // Restart Roon discovery to find the core again
@@ -165,6 +175,15 @@ process.on('uncaughtException', (err) => {
     cleanupTradfriConnection().catch(e => {
         logger.warn("Warning: Error during tradfri cleanup in uncaughtException:", e.message);
     }).finally(() => {
+        // Restore pairing state to allow reconnection to the same core
+        const roonstate = roon.load_config("roonstate") || {};
+        if (roonstate.paired_core_id) {
+            logger.info(`[DIAG] Restoring pairing state in uncaughtException: ${roonstate.paired_core_id}`);
+            roon.paired_core_id = roonstate.paired_core_id;
+            roon.paired_core = { core_id: roonstate.paired_core_id };
+            roon.is_paired = true;
+        }
+        
         // Restart gateway monitor after cleanup to allow reconnection
         setTimeout(startGatewayMonitor, 5000);
         // Also try to restart Roon discovery to reconnect to core
