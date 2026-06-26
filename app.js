@@ -70,10 +70,14 @@ const roon = new RoonApi({
                             if (output.output_id === getStateValue('outputId')) {
                                 if (zone.state === "playing" || zone.state === "loading") {
                                     logger.info('Turning ON IKEA device');
-                                    turnIkeaDevice("ON", getSettings().ikeaplug);
+                                    turnIkeaDevice("ON", getSettings().ikeaplug).catch(err => {
+                                        logger.error('Failed to turn ON IKEA device:', err.message);
+                                    });
                                 } else {
                                     logger.info('Turning OFF IKEA device');
-                                    turnIkeaDevice("OFF", getSettings().ikeaplug);
+                                    turnIkeaDevice("OFF", getSettings().ikeaplug).catch(err => {
+                                        logger.error('Failed to turn OFF IKEA device:', err.message);
+                                    });
                                 }
                             }
                         });
