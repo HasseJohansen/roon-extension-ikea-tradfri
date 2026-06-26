@@ -227,25 +227,38 @@ export async function getIkeaDevices(gwkey = "undefined") {
  * Turn an IKEA device on or off
  * @param {string} cmd - "ON" or "OFF"
  * @param {string} deviceid - Device ID
+ * @returns {Promise<boolean>} - true if successful, false if failed
  */
 export async function turnIkeaDevice(cmd, deviceid) {
     const tradfri = getStateValue('tradfri');
     if (!tradfri || !tradfri.devices) {
-        logger.info("Cannot turn device - tradfri not connected");
-        return;
+        logger.warn("Cannot turn device - tradfri not connected");
+        return false;
     }
 
-    for (const deviceId in tradfri.devices) {
-        if (deviceId === deviceid) {
-            const device = tradfri.devices[deviceId];
-            const accessory = device.plugList[0];
-            accessory.client = tradfri;
-            if (cmd === "ON") {
-                accessory.turnOn();
-            } else if (cmd === "OFF") {
-                accessory.turnOff();
+    try {
+        for (const deviceId in tradfri.devices) {
+            if (deviceId === deviceid) {
+                const device = tradfri.devices[deviceId];
+                const accessory = device.plugList[0];
+                accessory.client = tradfri;
+                
+                if (cmd === "ON") {
+                    await accessory.turnOn();
+                    logger.info(`Successfully turned ON device ${deviceid}`);
+                    return true;
+                } else if (cmd === "OFF") {
+                    await accessory.turnOff();
+                    logger.info(`Successfully turned OFF device ${deviceid}`);
+                    return true;
+                }
             }
         }
+        logger.warn(`Device ${deviceid} not found in tradfri devices`);
+        return false;
+    } catch (err) {
+        logger.error(`Error turning device ${deviceid} ${cmd}:`, err.message);
+        return false;
     }
 }
 
