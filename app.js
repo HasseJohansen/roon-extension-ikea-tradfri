@@ -126,8 +126,14 @@ const roon = new RoonApi({
             // Restart gateway monitor to allow reconnection when core comes back
             setTimeout(startGatewayMonitor, 5000);
             // Restart Roon discovery to find the core again
+            // Need to stop and delete the existing Sood instance first, as start_discovery
+            // checks if (this._sood) return; and won't restart if already set
             setTimeout(() => {
                 logger.info('Restarting Roon discovery after core loss...');
+                if (roon._sood) {
+                    roon._sood.stop();
+                    delete roon._sood;
+                }
                 roon.start_discovery();
             }, 6000);
         } catch (err) {
