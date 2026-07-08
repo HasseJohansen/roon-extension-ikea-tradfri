@@ -1,249 +1,247 @@
-/**
- * Roon Extension for IKEA Tradfri
- * Main entry point - initializes Roon API and coordinates modules
- */
+var RoonApi          = require("node-roon-api"),
+    RoonApiStatus    = require("node-roon-api-status"),
+    RoonApiTransport = require("node-roon-api-transport"),
+    RoonApiSettings  = require('node-roon-api-settings'),
+    IkeaConnection   = require( './connection' ),
+    IkeaDevices      = require( './devices' ),
+    Delay            = require( 'delay' );
+const fs = require('fs')
 
-import fs from 'fs';
-import RoonApi from "node-roon-api";
-import RoonApiStatus from "node-roon-api-status";
-import RoonApiTransport from "node-roon-api-transport";
-import logger from './logger.js';
+var _output_id = "";
+var ikea_devices = new Array;
+var tradfri
+var first_run = false
 
-import {
-    getStateValue,
-    setStateValue,
-    updateState,
-    getSettings,
-    updateSettings
-} from './state.js';
-
-import {
-    cleanupTradfriConnection,
-    startGatewayMonitor,
-    stopGatewayMonitor,
-    getIkeaDevices,
-    turnIkeaDevice
-} from './tradfri-manager.js';
-
-import { createSettingsService, updateStatus } from './settings-manager.js';
-
-/**
- * Update zoneName state based on current outputId and stored zones
- */
-function updateZoneName() {
-    const outputId = getStateValue('outputId');
-    const allZones = getStateValue('allZones');
-    
-    if (!outputId || !allZones || allZones.length === 0) {
-        return;
-    }
-    
-    for (const zone of allZones) {
-        for (const output of zone.outputs) {
-            if (output.output_id === outputId) {
-                setStateValue('zoneName', zone.display_name);
-                return;
-            }
-        }
-    }
-}
-
-// Load version from package.json - single source of truth
-const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-
-// Initialize Roon API
-const roon = new RoonApi({
-    extension_id: 'dk.1mx.roon-tradfri',
-    display_name: 'Roon Tradfri',
-    display_version: pkg.version,
-    publisher: 'Hasse Hagen Johansen',
-    email: 'hasse-roon@1mx.dk',
-    website: 'https://github.com/HasseJohansen/roon-extension-ikea-tradfri',
+var roon = new RoonApi({
+    extension_id:        'dk.hagenjohansen.roontradfri',
+    display_name:        "Roon Tradfri",
+    display_version:     "0.0.9",
+    publisher:           'Hasse Hagen Johansen',
+    email:               'hasse-roon@hagenjohansen.dk',
+    website:             'https://github.com/HasseJohansen/roon-extension-ikea-tradfri',
 
     core_paired: function(core) {
-        const transport = core.services.RoonApiTransport;
+        console.log(core.core_id, core.display_name, core.display_version, "- PAIRED");
+        let transport = core.services.RoonApiTransport;
         transport.subscribe_zones(function(cmd, data) {
-            if (cmd === "Changed") {
+            if (cmd == "Changed") {
                 if (data.zones_changed) {
                     data.zones_changed.forEach(zone => {
                         zone.outputs.forEach(output => {
-                            if (output.output_id === getStateValue('outputId')) {
-                                if (zone.state === "playing" || zone.state === "loading") {
-                                    logger.info('Turning ON IKEA device');
-                                    turnIkeaDevice("ON", getSettings().ikeaplug).catch(err => {
-                                        logger.error('Failed to turn ON IKEA device:', err.message);
-                                    });
-                                } else {
-                                    logger.info('Turning OFF IKEA device');
-                                    turnIkeaDevice("OFF", getSettings().ikeaplug).catch(err => {
-                                        logger.error('Failed to turn OFF IKEA device:', err.message);
-                                    });
-                                }
+                            if (output.output_id == _mysettings.outputid.output_id) {
+				if ((zone.state == "playing") || (zone.state == "loading")) {
+				    console.log('Turning ON IKEA device');
+				    turn_ikea_device("ON", _mysettings.ikeaplug)
+				}
+				else {
+				    console.log('Turning OFF IKEA device');
+				    turn_ikea_device("OFF", _mysettings.ikeaplug)
+				}
                             }
                         });
                     });
-                }
+                }    
             }
-            // Store all zones for status display - handle both initial subscription and changes
-            if (data.zones) {
-                // Initial subscription returns all zones - store them all
-                setStateValue('allZones', data.zones);
-            }
-            if (cmd === "Changed" && data.zones_changed) {
-                // Update stored zones with changes
-                const currentZones = getStateValue('allZones') || [];
-                data.zones_changed.forEach(changedZone => {
-                    const index = currentZones.findIndex(z => z.zone_id === changedZone.zone_id);
-                    if (index >= 0) {
-                        currentZones[index] = changedZone;
-                    } else {
-                        currentZones.push(changedZone);
-                    }
-                });
-                setStateValue('allZones', currentZones);
-            }
-            // Update zoneName based on current outputId
-            updateZoneName();
         });
     },
 
-    core_unpaired: async function(core) {
-        try {
-            logger.info(`${core.core_id}, ${core.display_name}, ${core.display_version}, - LOST`);
-            // Cleanup resources when core is unpaired
-            stopGatewayMonitor();
-            await cleanupTradfriConnection();
-            
-            // Restore pairing state to allow reconnection to the same core
-            const roonstate = roon.load_config("roonstate") || {};
-            if (roonstate.paired_core_id) {
-                logger.info(`[DIAG] Restoring pairing state in core_unpaired: ${roonstate.paired_core_id}`);
-                roon.paired_core_id = roonstate.paired_core_id;
-                roon.paired_core = { core_id: roonstate.paired_core_id };
-                roon.is_paired = true;
-            }
-            
-            // Restart gateway monitor to allow reconnection when core comes back
-            setTimeout(startGatewayMonitor, 5000);
-            // Restart Roon discovery to find the core again
-            setTimeout(() => {
-                logger.info('Restarting Roon discovery after core loss...');
-                roon.start_discovery();
-            }, 6000);
-        } catch (err) {
-            logger.error('Error in core_unpaired callback:', err && err.message ? err.message : err);
-        }
+    core_unpaired: function(core) {
+        console.log(core.core_id,
+		    core.display_name,
+		    core.display_version,
+		    "-",
+		    "LOST - attempting to reconnect...");
+	
+	// Attempt to reconnect by restarting discovery
+	// Retry for 5 minutes total (300 seconds): first attempt at 30s, then every 10s
+	function attemptReconnect(count, maxAttempts) {
+	    // Stop existing discovery
+	    if (roon._sood) {
+		    roon._sood.stop();
+		    delete roon._sood;
+	    }
+	    
+	    // Clear the connection state to allow reconnection
+	    delete roon._sood_conns[core.core_id];
+	    
+	    // Calculate delay: 30s for first attempt, then 10s for subsequent
+	    var delay = (count === 0) ? 30000 : 10000;
+	    
+	    console.log(`Reconnection attempt ${count + 1}/${maxAttempts} in ${delay/1000}s...`);
+	    
+	    setTimeout(() => {
+		    console.log("Restarting Roon discovery...");
+		    roon.start_discovery();
+		    
+		    // Check if we should retry again
+		    if (count + 1 < maxAttempts) {
+			// Check if we're reconnected by verifying is_paired state
+			if (!roon.is_paired) {
+			    attemptReconnect(count + 1, maxAttempts);
+			} else {
+			    console.log("Successfully reconnected to Roon core");
+			}
+		} else {
+		    console.log("Reconnection attempts exhausted after 5 minutes");
+		}
+	    }, delay);
+	}
+	
+	// Start reconnection attempts: 30s + 27 * 10s = 300s (5 minutes total)
+	// We'll do 28 attempts: first at 30s, then 27 more at 10s intervals = 30 + 270 = 300s
+	var maxAttempts = 28;
+	attemptReconnect(0, maxAttempts);
     }
 });
 
-// Load saved settings from Roon config
-const savedSettings = roon.load_config("settings") || {};
-updateSettings(savedSettings);
+var _mysettings = Object.assign({
+    zone:             null,
+    ikeaplug:         null
+}, roon.load_config("settings") || {});
 
-// Initialize state from saved settings
-if (savedSettings.outputid) {
-    setStateValue('outputId', savedSettings.outputid.output_id);
+function makelayout(settings) {
+    var l = {
+             values:    settings,
+             layout:    [],
+             has_error: false
+    };
+    if( first_run == true ) {
+	do_not_log()
+        l.layout.push({
+	    type: "string",
+	    title: "Ikea gateway secret key",
+	    setting: "ikeagwkey",
+	})
+    }
+    else {
+        delete l.values.ikeagwkey;
+	log()
+        l.layout.push({
+            type:    "zone",
+            title:   "Zone",
+            setting: "outputid",
+        });
+        l.layout.push({
+        type:    "dropdown",
+        title:   "IkeaPlug",
+        values:  ikea_devices,
+        setting: "ikeaplug",
+        });
+    }
+    return l;
 }
 
-// Create status service first (needed by settings service)
-const svc_status = new RoonApiStatus(roon);
-
-// Create settings service with access to status service
-const svc_settings = createSettingsService(roon, svc_status);
-
-// Initialize services
-roon.init_services({
-    required_services: [RoonApiTransport],
-    provided_services: [svc_settings, svc_status]
-});
-
-// Restore persisted pairing state before discovery starts.
-// Need to set BOTH paired_core_id AND is_paired for library to recognize reconnection.
-const roonstate = roon.load_config("roonstate") || {};
-if (roonstate.paired_core_id) {
-    roon.paired_core_id = roonstate.paired_core_id;
-    roon.paired_core = { core_id: roonstate.paired_core_id };
-    roon.is_paired = true;
-    logger.info(`[DIAG] Restored pairing state: ${roonstate.paired_core_id}, is_paired=true`);
-}
-
-// Set initial status before gateway discovery starts
-updateStatus(svc_status);
-
-// Global error handlers
-process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception:', err && err.message ? err.message : err, err && err.stack ? '\n' + err.stack : '');
-    // Try to recover by resetting state
-    stopGatewayMonitor();
-    setStateValue('gatewayDiscovering', false);
-    cleanupTradfriConnection().catch(e => {
-        logger.warn("Warning: Error during tradfri cleanup in uncaughtException:", e.message);
-    }).finally(() => {
-        // Restore pairing state to allow reconnection to the same core
-        const roonstate = roon.load_config("roonstate") || {};
-        if (roonstate.paired_core_id) {
-            logger.info(`[DIAG] Restoring pairing state in uncaughtException: ${roonstate.paired_core_id}`);
-            roon.paired_core_id = roonstate.paired_core_id;
-            roon.paired_core = { core_id: roonstate.paired_core_id };
-            roon.is_paired = true;
+var svc_settings = new RoonApiSettings(roon, {
+        get_settings: function(cb) {
+            cb(makelayout(_mysettings));
+    },
+    save_settings: function(req, isdryrun, settings) {
+        if (req.body.settings) {
+            if ( (req.body.settings.values["outputid"]) && (first_run == false) ) {
+                _output_id = req.body.settings.values["outputid"]["output_id"];
+            }
         }
-        
-        // Restart gateway monitor after cleanup to allow reconnection
-        setTimeout(startGatewayMonitor, 5000);
-        // Also try to restart Roon discovery to reconnect to core
-        setTimeout(() => {
-            logger.info('Restarting Roon discovery after error...');
-            roon.start_discovery();
-        }, 6000);
-    });
+
+        let l = makelayout(settings.values);
+        req.send_complete(l.has_error ? "NotValid" : "Success", { settings: l });
+
+        if (!l.has_error && first_run == false) {
+	    delete l.values.ikeagwkey;
+	    _mysettings = l.values;
+            svc_settings.update_settings(l);
+            roon.save_config("settings", _mysettings);
+	    update_status();
+        }
+	else {
+	    first_run = false;
+	    get_ikea_devices(l.values['ikeagwkey']).then( () => {
+		 svc_status.set_status("Not Configured");
+	    })
+	}
+    }
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection at:', promise, 'reason:', reason && reason.message ? reason.message : reason);
+var svc_status = new RoonApiStatus(roon);
+
+roon.init_services({
+    required_services: [ RoonApiTransport ],
+    provided_services: [ svc_settings, svc_status ]
 });
 
-// Start Roon discovery IMMEDIATELY - don't wait for Tradfri
-// This ensures Roon connects as soon as possible, preventing authorization timeouts
-initSignalHandlers();
-roon.start_discovery();
-
-// Start Tradfri discovery in parallel - it will auto-retry on failure
-const mysettings = getSettings();
-// Only start discovery if we have credentials or are not on first run
-// On first run, wait for user to enter security code via settings
-if (!getStateValue('firstRun') || mysettings.ikeagwkey || mysettings.tradfri_identity) {
-    getIkeaDevices(mysettings.ikeagwkey).then(() => {
-        updateStatus(svc_status);
-    }).catch(err => {
-        logger.error('Tradfri discovery failed, will retry:', err && err.message ? err.message : err);
-        updateState({
-            gatewayAvailable: false,
-            gatewayDiscovered: err.message && err.message.includes("Tradfri gateway not found") ? false : getStateValue('gatewayDiscovered')
-        });
-        updateStatus(svc_status);
-    });
+function update_status() {
+    if ( (typeof(_mysettings.outputid) != "undefined") && (_mysettings.ikeaplug != null) ) {
+        device_name = ikea_devices.filter(device => {
+	    return device.value === _mysettings.ikeaplug
+        })[0]
+        svc_status.set_status(_mysettings.outputid.name + " set to: " + device_name.title, false);
+    }
+    else {
+	svc_status.set_status("First run. Please update settings");
+    }
 }
 
-// Start periodic gateway monitoring
-startGatewayMonitor();
+const get_ikea_devices = async (gwkey="undefined") => {
+    tradfri = await IkeaConnection.getConnection()
+    if (typeof(tradfri) != "object" && gwkey != "undefined") {
+	tradfri = await IkeaConnection.getConnection(gwkey)
+    }
+    if (typeof(tradfri) != "object") {
+        first_run = true;
+    }
+    else {
+	tradfri = await IkeaConnection.getConnection(gwkey)
+	tradfri.observeDevices();
+	await Delay(500)
+	for (const deviceId in tradfri.devices) {
+            const device = tradfri.devices[deviceId];
+            DeviceObj = new Object()
+	    DeviceObj.title = device.name
+	    DeviceObj.value = deviceId
+	    if (typeof(device.plugList) != "undefined") {
+		ikea_devices.push(DeviceObj)
+	    }
+        }
+	tradfri = tradfri;
+    }
+}
 
-/**
- * Initialize signal handlers for graceful shutdown
- */
-function initSignalHandlers() {
+const turn_ikea_device = async (cmd,deviceid) => {
+    for(const deviceId in tradfri.devices) {
+	if(deviceId === deviceid) {
+	    device = tradfri.devices[deviceId];
+	    accessory = device.plugList[0]
+	    accessory.client = tradfri
+	    if (cmd == "ON") {
+		accessory.turnOn()
+	    }
+	    if (cmd == "OFF") {
+		accessory.turnOff()
+	    }
+	}
+    }
+}
+
+function do_not_log() {
+    logger = process.stdout.write
+    var dev_null = fs.createWriteStream('/dev/null');
+    process.stdout.write = dev_null.write.bind(dev_null);
+}
+function log() {
+    var dev_stdout = fs.createWriteStream('/dev/stdout');
+    process.stdout.write = dev_stdout.write.bind(dev_null);
+}
+init_signal_handlers()
+get_ikea_devices().then( () => {
+    roon.start_discovery();
+    update_status();
+})
+
+function init_signal_handlers() {
     const handle = function(signal) {
-        logger.info(`Received ${signal}, shutting down gracefully...`);
-        stopGatewayMonitor();
-        cleanupTradfriConnection().then(() => {
-            process.exit(0);
-        }).catch(() => {
-            process.exit(0);
-        });
+        process.exit(0);
     };
 
     // Register signal handlers to enable a graceful stop of the container
     process.on('SIGTERM', handle);
     process.on('SIGINT', handle);
 }
-
-export default roon;
