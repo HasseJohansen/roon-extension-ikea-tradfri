@@ -16,6 +16,7 @@ const initialState = {
     authFailed: false,
     gatewayCheckTimer: null,
     gatewayDiscovering: false,
+    currentDeviceState: null, // Track current device state: 'ON', 'OFF', or null (unknown/initial)
     mysettings: {
         zone: null,
         ikeaplug: null,

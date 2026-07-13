@@ -65,18 +65,27 @@ const roon = new RoonApi({
         transport.subscribe_zones(function(cmd, data) {
             if (cmd === "Changed") {
                 if (data.zones_changed) {
+                    // Check if we have valid configuration before processing
+                    const outputId = getStateValue('outputId');
+                    const settings = getSettings();
+                    
+                    if (!outputId || !settings.ikeaplug) {
+                        logger.debug('Skipping zone change - not fully configured yet');
+                        return;
+                    }
+                    
                     data.zones_changed.forEach(zone => {
                         zone.outputs.forEach(output => {
-                            if (output.output_id === getStateValue('outputId')) {
+                            if (output.output_id === outputId) {
                                 if (zone.state === "playing" || zone.state === "loading") {
                                     logger.info('Turning ON IKEA device');
-                                    turnIkeaDevice("ON", getSettings().ikeaplug).catch(err => {
-                                        logger.error('Failed to turn ON IKEA device:', err.message);
+                                    turnIkeaDevice("ON", settings.ikeaplug).catch(err => {
+                                        logger.error('Failed to turn ON IKEA device:', err && err.message ? err.message : err);
                                     });
                                 } else {
                                     logger.info('Turning OFF IKEA device');
-                                    turnIkeaDevice("OFF", getSettings().ikeaplug).catch(err => {
-                                        logger.error('Failed to turn OFF IKEA device:', err.message);
+                                    turnIkeaDevice("OFF", settings.ikeaplug).catch(err => {
+                                        logger.error('Failed to turn OFF IKEA device:', err && err.message ? err.message : err);
                                     });
                                 }
                             }
@@ -88,6 +97,25 @@ const roon = new RoonApi({
             if (data.zones) {
                 // Initial subscription returns all zones - store them all
                 setStateValue('allZones', data.zones);
+                
+                // Process initial zone state: check if any configured zone is already playing
+                const outputId = getStateValue('outputId');
+                const settings = getSettings();
+                if (outputId && settings.ikeaplug) {
+                    for (const zone of data.zones) {
+                        for (const output of zone.outputs) {
+                            if (output.output_id === outputId) {
+                                if (zone.state === "playing" || zone.state === "loading") {
+                                    logger.info('Initial zone state: Turning ON IKEA device');
+                                    turnIkeaDevice("ON", settings.ikeaplug).catch(err => {
+                                        logger.error('Failed to turn ON IKEA device (initial state):', err && err.message ? err.message : err);
+                                    });
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
             }
             if (cmd === "Changed" && data.zones_changed) {
                 // Update stored zones with changes
