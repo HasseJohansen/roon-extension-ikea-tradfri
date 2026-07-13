@@ -104,6 +104,7 @@ describe('Tradfri Manager', () => {
                 }
             };
             setStateValue('tradfri', mockTradfri);
+            setStateValue('gatewayAvailable', true);
 
             await turnIkeaDevice('ON', 'device1');
 
@@ -127,6 +128,7 @@ describe('Tradfri Manager', () => {
                 }
             };
             setStateValue('tradfri', mockTradfri);
+            setStateValue('gatewayAvailable', true);
 
             await turnIkeaDevice('OFF', 'device1');
 
@@ -150,6 +152,7 @@ describe('Tradfri Manager', () => {
                 }
             };
             setStateValue('tradfri', mockTradfri);
+            setStateValue('gatewayAvailable', true);
 
             await turnIkeaDevice('ON', 'device2'); // Non-existent device
 
@@ -173,6 +176,7 @@ describe('Tradfri Manager', () => {
                 }
             };
             setStateValue('tradfri', mockTradfri);
+            setStateValue('gatewayAvailable', true);
             setStateValue('currentDeviceState', 'ON'); // Device already ON
 
             await turnIkeaDevice('ON', 'device1');
@@ -198,6 +202,7 @@ describe('Tradfri Manager', () => {
                 }
             };
             setStateValue('tradfri', mockTradfri);
+            setStateValue('gatewayAvailable', true);
             setStateValue('currentDeviceState', 'OFF'); // Device already OFF
 
             await turnIkeaDevice('OFF', 'device1');
@@ -223,6 +228,7 @@ describe('Tradfri Manager', () => {
                 }
             };
             setStateValue('tradfri', mockTradfri);
+            setStateValue('gatewayAvailable', true);
             setStateValue('currentDeviceState', 'OFF'); // Device is OFF
 
             await turnIkeaDevice('ON', 'device1');
@@ -248,6 +254,7 @@ describe('Tradfri Manager', () => {
                 }
             };
             setStateValue('tradfri', mockTradfri);
+            setStateValue('gatewayAvailable', true);
             setStateValue('currentDeviceState', 'ON'); // Device is ON
 
             await turnIkeaDevice('OFF', 'device1');
@@ -273,6 +280,7 @@ describe('Tradfri Manager', () => {
                 }
             };
             setStateValue('tradfri', mockTradfri);
+            setStateValue('gatewayAvailable', true);
             setStateValue('currentDeviceState', null); // State unknown
 
             await turnIkeaDevice('ON', 'device1');
