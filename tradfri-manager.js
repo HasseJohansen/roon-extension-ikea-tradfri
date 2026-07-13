@@ -26,13 +26,15 @@ export async function cleanupTradfriConnection() {
     if (tradfri) {
         try {
             await tradfri.destroy();
-            logger.info("Tradfri connection cleaned up");
+            logger.info("[DEVICE_CTRL] Tradfri connection cleaned up");
         } catch (e) {
-            logger.error("Error during tradfri cleanup:", e.message);
+            logger.error("[DEVICE_CTRL] Error during tradfri cleanup:", e && e.message ? e.message : JSON.stringify(e));
         }
         setStateValue('tradfri', null);
         // Reset device state when connection is cleaned up
         setStateValue('currentDeviceState', null);
+        setStateValue('gatewayAvailable', false);
+        setStateValue('gatewayDiscovered', false);
     }
 }
 
@@ -47,26 +49,33 @@ export function startGatewayMonitor() {
         }
 
         try {
-            // If we already have a connection, nothing to check
             const tradfri = getStateValue('tradfri');
-            if (getStateValue('gatewayAvailable') && tradfri) {
+            const gatewayAvailable = getStateValue('gatewayAvailable');
+            const gatewayDiscovered = getStateValue('gatewayDiscovered');
+
+            // Log current state for debugging
+            logger.info(`[GATEWAY] Checking gateway status: gatewayAvailable=${gatewayAvailable}, gatewayDiscovered=${gatewayDiscovered}, tradfri=${!!tradfri}`);
+
+            // If we already have a connection, nothing to check
+            if (gatewayAvailable && tradfri) {
                 return;
             }
 
             // If gateway has been discovered before, try to reconnect
-            if (getStateValue('gatewayDiscovered')) {
-                logger.info("Attempting to reconnect to previously discovered gateway...");
+            if (gatewayDiscovered) {
+                logger.info("[GATEWAY] Attempting to reconnect to previously discovered gateway...");
                 setStateValue('ikeaDevices', []);
+                setStateValue('currentDeviceState', null); // Reset device state on reconnection attempt
                 const mysettings = getSettings();
                 await getIkeaDevices(mysettings.ikeagwkey);
                 return;
             }
 
             // Gateway not yet discovered - start discovery
-            logger.info("Starting gateway discovery...");
+            logger.info("[GATEWAY] Starting gateway discovery...");
             await getIkeaDevices();
         } catch (err) {
-            logger.info("IKEA gateway check failed:", err && err.message ? err.message : err);
+            logger.error("[GATEWAY] IKEA gateway check failed:", err && err.message ? err.message : JSON.stringify(err));
             updateState({
                 gatewayAvailable: false,
                 gatewayDiscovered: err.message && err.message.includes("Tradfri gateway not found") ? false : getStateValue('gatewayDiscovered')
@@ -82,7 +91,7 @@ export function startGatewayMonitor() {
 
     // Periodic check
     const timer = setInterval(checkGateway, GATEWAY_CHECK_INTERVAL_MS);
-    logger.info(`Started IKEA gateway monitor, checking every ${GATEWAY_CHECK_INTERVAL_MS / 1000} seconds`);
+    logger.info(`[GATEWAY] Started IKEA gateway monitor, checking every ${GATEWAY_CHECK_INTERVAL_MS / 1000} seconds`);
     setStateValue('gatewayCheckTimer', timer);
 }
 
@@ -155,9 +164,9 @@ export async function getIkeaDevices(gwkey = "undefined") {
                     authFailed: true,
                     gatewayDiscovered: true // Gateway was found via bonjour
                 });
-                logger.info("Authentication failed - security code required");
+                logger.info("[CONNECTION] Authentication failed - security code required");
             } else {
-                logger.info("IKEA gateway found but not connected (no credentials or connection failed)");
+                logger.info("[CONNECTION] IKEA gateway found but not connected (no credentials or connection failed)");
             }
         } else if (result && result.tradfri) {
             updateState({
@@ -199,13 +208,14 @@ export async function getIkeaDevices(gwkey = "undefined") {
             setStateValue('ikeaDevices', devices);
         }
     } catch (err) {
-        logger.info("Error in get_ikea_devices after attempts:", err && err.message ? err.message : err);
+        const errorMessage = err && err.message ? err.message : JSON.stringify(err);
+        logger.error("[CONNECTION] Error in get_ikea_devices after attempts:", errorMessage);
         updateState({
             gatewayAvailable: false,
             firstRun: true
         });
         // Set auth_failed for authentication errors
-        if (err.message && (err.message.includes("not valid") || err.message.includes("Authentication") || err.message.includes("re-authenticate"))) {
+        if (errorMessage && (errorMessage.includes("not valid") || errorMessage.includes("Authentication") || errorMessage.includes("re-authenticate"))) {
             updateState({
                 authFailed: true,
                 gatewayDiscovered: false
@@ -214,10 +224,10 @@ export async function getIkeaDevices(gwkey = "undefined") {
                 tradfri_identity: null,
                 tradfri_psk: null
             });
-            logger.info("Authentication failed - cleared invalid credentials");
+            logger.info("[CONNECTION] Authentication failed - cleared invalid credentials");
         }
         // Only set gateway_discovered to false if gateway is not on the network
-        else if (err.message && err.message.includes("Tradfri gateway not found")) {
+        else if (errorMessage && errorMessage.includes("Tradfri gateway not found")) {
             updateState({ gatewayDiscovered: false });
         }
     } finally {
@@ -251,45 +261,130 @@ export function setCurrentDeviceState(state) {
     }
 }
 
+/**
+ * Check if Tradfri connection is active and ready
+ * @returns {boolean} True if connected and devices are loaded
+ */
+export function isTradfriConnected() {
+    const tradfri = getStateValue('tradfri');
+    const gatewayAvailable = getStateValue('gatewayAvailable');
+    
+    if (!gatewayAvailable) {
+        return false;
+    }
+    
+    return tradfri && tradfri.devices && Object.keys(tradfri.devices).length > 0;
+}
+
+/**
+ * Attempt to reconnect to Tradfri gateway when connection is lost
+ * @returns {Promise<boolean>} True if reconnection succeeded
+ */
+export async function reconnectTradfri() {
+    const gatewayDiscovered = getStateValue('gatewayDiscovered');
+    
+    if (!gatewayDiscovered) {
+        logger.warn("[DEVICE_CTRL] Cannot reconnect - gateway not yet discovered");
+        return false;
+    }
+    
+    logger.info("[DEVICE_CTRL] Attempting to reconnect to Tradfri gateway...");
+    const mysettings = getSettings();
+    
+    try {
+        await getIkeaDevices(mysettings.ikeagwkey);
+        const connected = isTradfriConnected();
+        if (connected) {
+            logger.info("[DEVICE_CTRL] Successfully reconnected to Tradfri gateway");
+        } else {
+            logger.warn("[DEVICE_CTRL] Reconnection failed - Tradfri not connected");
+        }
+        return connected;
+    } catch (err) {
+        const errorMessage = err && err.message ? err.message : JSON.stringify(err);
+        logger.error("[DEVICE_CTRL] Reconnection failed:", errorMessage);
+        return false;
+    }
+}
+
 export async function turnIkeaDevice(cmd, deviceid) {
     const tradfri = getStateValue('tradfri');
     const currentState = getStateValue('currentDeviceState');
+    const gatewayAvailable = getStateValue('gatewayAvailable');
+    
+    // Detailed logging for debugging
+    const deviceCount = tradfri && tradfri.devices ? Object.keys(tradfri.devices).length : 0;
+    logger.info(`[DEVICE_CTRL] turnIkeaDevice: cmd=${cmd}, deviceid=${deviceid}, currentState=${currentState}, gatewayAvailable=${gatewayAvailable}, deviceCount=${deviceCount}`);
     
     // If already in desired state, skip to avoid redundant commands
     if (currentState === cmd) {
-        logger.debug(`Device already ${cmd}, skipping command for device ${deviceid}`);
+        logger.info(`[DEVICE_CTRL] Device already ${cmd}, skipping command for device ${deviceid}`);
         return true;
     }
     
-    if (!tradfri || !tradfri.devices) {
-        logger.warn("Cannot turn device - tradfri not connected");
-        return false;
+    // Check if Tradfri is connected and ready
+    if (!isTradfriConnected()) {
+        logger.warn(`[DEVICE_CTRL] Cannot turn device - Tradfri not connected or devices not loaded (gatewayAvailable=${gatewayAvailable}, tradfri=${!!tradfri}, deviceCount=${deviceCount})`);
+        // Attempt to reconnect
+        const reconnected = await reconnectTradfri();
+        if (!reconnected) {
+            return false;
+        }
+        // After reconnection, re-check if we're connected
+        if (!isTradfriConnected()) {
+            logger.error(`[DEVICE_CTRL] Reconnection succeeded but still not connected`);
+            return false;
+        }
     }
 
     try {
-        for (const deviceId in tradfri.devices) {
+        const updatedTradfri = getStateValue('tradfri');
+        
+        for (const deviceId in updatedTradfri.devices) {
             if (deviceId === deviceid) {
-                const device = tradfri.devices[deviceId];
+                const device = updatedTradfri.devices[deviceId];
                 const accessory = device.plugList[0];
-                accessory.client = tradfri;
+                
+                if (!accessory) {
+                    logger.error(`[DEVICE_CTRL] Device ${deviceid} has no plugList`);
+                    return false;
+                }
+                
+                accessory.client = updatedTradfri;
                 
                 if (cmd === "ON") {
+                    logger.info(`[DEVICE_CTRL] Attempting to turn ON device ${deviceid}`);
                     await accessory.turnOn();
                     setStateValue('currentDeviceState', 'ON');
-                    logger.info(`Successfully turned ON device ${deviceid}`);
+                    logger.info(`[DEVICE_CTRL] Successfully turned ON device ${deviceid}`);
                     return true;
                 } else if (cmd === "OFF") {
+                    logger.info(`[DEVICE_CTRL] Attempting to turn OFF device ${deviceid}`);
                     await accessory.turnOff();
                     setStateValue('currentDeviceState', 'OFF');
-                    logger.info(`Successfully turned OFF device ${deviceid}`);
+                    logger.info(`[DEVICE_CTRL] Successfully turned OFF device ${deviceid}`);
                     return true;
                 }
             }
         }
-        logger.warn(`Device ${deviceid} not found in tradfri devices`);
+        logger.warn(`[DEVICE_CTRL] Device ${deviceid} not found in tradfri devices`);
         return false;
     } catch (err) {
-        logger.error(`Error turning device ${deviceid} ${cmd}:`, err && err.message ? err.message : err);
+        // Enhanced error logging - capture full error object
+        const errorDetails = err && err.message ? err.message : JSON.stringify(err);
+        logger.error(`[DEVICE_CTRL] Error turning device ${deviceid} ${cmd}: ${errorDetails}`, { error: err });
+        
+        // On connection errors, clear the connection state to trigger reconnection on next attempt
+        if (errorDetails.includes('ECONNREFUSED') || errorDetails.includes('not connected') || 
+            errorDetails.includes('timeout') || errorDetails.includes('ECONNRESET')) {
+            logger.warn(`[DEVICE_CTRL] Connection error detected, clearing connection state`);
+            updateState({
+                gatewayAvailable: false
+            });
+            setStateValue('currentDeviceState', null);
+            // Cleanup will be handled by the gateway monitor
+        }
+        
         return false;
     }
 }

@@ -77,15 +77,18 @@ const roon = new RoonApi({
                     data.zones_changed.forEach(zone => {
                         zone.outputs.forEach(output => {
                             if (output.output_id === outputId) {
+                                logger.info(`[ZONE] Zone ${zone.display_name} state changed to: ${zone.state}, output: ${output.display_name}`);
                                 if (zone.state === "playing" || zone.state === "loading") {
-                                    logger.info('Turning ON IKEA device');
+                                    logger.info('[ZONE] Turning ON IKEA device');
                                     turnIkeaDevice("ON", settings.ikeaplug).catch(err => {
-                                        logger.error('Failed to turn ON IKEA device:', err && err.message ? err.message : err);
+                                        const errorMessage = err && err.message ? err.message : JSON.stringify(err);
+                                        logger.error(`[ZONE] Failed to turn ON IKEA device: ${errorMessage}`);
                                     });
                                 } else {
-                                    logger.info('Turning OFF IKEA device');
+                                    logger.info('[ZONE] Turning OFF IKEA device');
                                     turnIkeaDevice("OFF", settings.ikeaplug).catch(err => {
-                                        logger.error('Failed to turn OFF IKEA device:', err && err.message ? err.message : err);
+                                        const errorMessage = err && err.message ? err.message : JSON.stringify(err);
+                                        logger.error(`[ZONE] Failed to turn OFF IKEA device: ${errorMessage}`);
                                     });
                                 }
                             }
@@ -106,9 +109,10 @@ const roon = new RoonApi({
                         for (const output of zone.outputs) {
                             if (output.output_id === outputId) {
                                 if (zone.state === "playing" || zone.state === "loading") {
-                                    logger.info('Initial zone state: Turning ON IKEA device');
+                                    logger.info(`[ZONE] Initial zone state: Zone ${zone.display_name} is ${zone.state}, turning ON IKEA device`);
                                     turnIkeaDevice("ON", settings.ikeaplug).catch(err => {
-                                        logger.error('Failed to turn ON IKEA device (initial state):', err && err.message ? err.message : err);
+                                        const errorMessage = err && err.message ? err.message : JSON.stringify(err);
+                                        logger.error(`[ZONE] Failed to turn ON IKEA device (initial state): ${errorMessage}`);
                                     });
                                 }
                                 break;
@@ -206,12 +210,15 @@ updateStatus(svc_status);
 
 // Global error handlers
 process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception:', err && err.message ? err.message : err, err && err.stack ? '\n' + err.stack : '');
+    const errorMessage = err && err.message ? err.message : JSON.stringify(err);
+    const stackTrace = err && err.stack ? '\n' + err.stack : '';
+    logger.error(`Uncaught Exception: ${errorMessage}${stackTrace}`);
     // Try to recover by resetting state
     stopGatewayMonitor();
     setStateValue('gatewayDiscovering', false);
     cleanupTradfriConnection().catch(e => {
-        logger.warn("Warning: Error during tradfri cleanup in uncaughtException:", e.message);
+        const cleanupError = e && e.message ? e.message : JSON.stringify(e);
+        logger.warn(`Warning: Error during tradfri cleanup in uncaughtException: ${cleanupError}`);
     }).finally(() => {
         // Restore pairing state to allow reconnection to the same core
         const roonstate = roon.load_config("roonstate") || {};
@@ -226,14 +233,15 @@ process.on('uncaughtException', (err) => {
         setTimeout(startGatewayMonitor, 5000);
         // Also try to restart Roon discovery to reconnect to core
         setTimeout(() => {
-            logger.info('Restarting Roon discovery after error...');
+            logger.info('[DIAG] Restarting Roon discovery after error...');
             roon.start_discovery();
         }, 6000);
     });
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection at:', promise, 'reason:', reason && reason.message ? reason.message : reason);
+    const reasonMessage = reason && reason.message ? reason.message : JSON.stringify(reason);
+    logger.error(`Unhandled Rejection at: ${promise}, reason: ${reasonMessage}`);
 });
 
 // Start Roon discovery IMMEDIATELY - don't wait for Tradfri
