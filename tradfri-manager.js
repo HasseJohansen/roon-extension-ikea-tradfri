@@ -31,6 +31,8 @@ export async function cleanupTradfriConnection() {
             logger.error("Error during tradfri cleanup:", e.message);
         }
         setStateValue('tradfri', null);
+        // Reset device state when connection is cleaned up
+        setStateValue('currentDeviceState', null);
     }
 }
 
@@ -229,8 +231,36 @@ export async function getIkeaDevices(gwkey = "undefined") {
  * @param {string} deviceid - Device ID
  * @returns {Promise<boolean>} - true if successful, false if failed
  */
+/**
+ * Get current device state
+ * @returns {string|null} Current state: 'ON', 'OFF', or null (unknown/initial)
+ */
+export function getCurrentDeviceState() {
+    return getStateValue('currentDeviceState');
+}
+
+/**
+ * Set current device state (for external control or testing)
+ * @param {string|null} state - 'ON', 'OFF', or null to reset
+ */
+export function setCurrentDeviceState(state) {
+    if (state === 'ON' || state === 'OFF' || state === null) {
+        setStateValue('currentDeviceState', state);
+    } else {
+        logger.warn(`Invalid device state: ${state}, must be 'ON', 'OFF', or null`);
+    }
+}
+
 export async function turnIkeaDevice(cmd, deviceid) {
     const tradfri = getStateValue('tradfri');
+    const currentState = getStateValue('currentDeviceState');
+    
+    // If already in desired state, skip to avoid redundant commands
+    if (currentState === cmd) {
+        logger.debug(`Device already ${cmd}, skipping command for device ${deviceid}`);
+        return true;
+    }
+    
     if (!tradfri || !tradfri.devices) {
         logger.warn("Cannot turn device - tradfri not connected");
         return false;
@@ -245,10 +275,12 @@ export async function turnIkeaDevice(cmd, deviceid) {
                 
                 if (cmd === "ON") {
                     await accessory.turnOn();
+                    setStateValue('currentDeviceState', 'ON');
                     logger.info(`Successfully turned ON device ${deviceid}`);
                     return true;
                 } else if (cmd === "OFF") {
                     await accessory.turnOff();
+                    setStateValue('currentDeviceState', 'OFF');
                     logger.info(`Successfully turned OFF device ${deviceid}`);
                     return true;
                 }
@@ -257,7 +289,7 @@ export async function turnIkeaDevice(cmd, deviceid) {
         logger.warn(`Device ${deviceid} not found in tradfri devices`);
         return false;
     } catch (err) {
-        logger.error(`Error turning device ${deviceid} ${cmd}:`, err.message);
+        logger.error(`Error turning device ${deviceid} ${cmd}:`, err && err.message ? err.message : err);
         return false;
     }
 }

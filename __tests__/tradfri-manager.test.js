@@ -6,7 +6,9 @@ import { jest } from '@jest/globals';
 import {
     cleanupTradfriConnection,
     stopGatewayMonitor,
-    turnIkeaDevice
+    turnIkeaDevice,
+    getCurrentDeviceState,
+    setCurrentDeviceState
 } from '../tradfri-manager.js';
 import { getStateValue, setStateValue, resetState } from '../state.js';
 
@@ -153,6 +155,161 @@ describe('Tradfri Manager', () => {
 
             expect(mockAccessory.turnOn).not.toHaveBeenCalled();
             expect(mockAccessory.turnOff).not.toHaveBeenCalled();
+        });
+
+        it('should skip command when device already in desired ON state', async () => {
+            const mockAccessory = {
+                client: null,
+                turnOn: jest.fn(),
+                turnOff: jest.fn()
+            };
+            const mockDevice = {
+                name: 'Test Device',
+                plugList: [mockAccessory]
+            };
+            const mockTradfri = {
+                devices: {
+                    'device1': mockDevice
+                }
+            };
+            setStateValue('tradfri', mockTradfri);
+            setStateValue('currentDeviceState', 'ON'); // Device already ON
+
+            await turnIkeaDevice('ON', 'device1');
+
+            expect(mockAccessory.turnOn).not.toHaveBeenCalled();
+            expect(mockAccessory.turnOff).not.toHaveBeenCalled();
+            expect(getCurrentDeviceState()).toBe('ON');
+        });
+
+        it('should skip command when device already in desired OFF state', async () => {
+            const mockAccessory = {
+                client: null,
+                turnOn: jest.fn(),
+                turnOff: jest.fn()
+            };
+            const mockDevice = {
+                name: 'Test Device',
+                plugList: [mockAccessory]
+            };
+            const mockTradfri = {
+                devices: {
+                    'device1': mockDevice
+                }
+            };
+            setStateValue('tradfri', mockTradfri);
+            setStateValue('currentDeviceState', 'OFF'); // Device already OFF
+
+            await turnIkeaDevice('OFF', 'device1');
+
+            expect(mockAccessory.turnOn).not.toHaveBeenCalled();
+            expect(mockAccessory.turnOff).not.toHaveBeenCalled();
+            expect(getCurrentDeviceState()).toBe('OFF');
+        });
+
+        it('should turn on device when current state is OFF', async () => {
+            const mockAccessory = {
+                client: null,
+                turnOn: jest.fn(),
+                turnOff: jest.fn()
+            };
+            const mockDevice = {
+                name: 'Test Device',
+                plugList: [mockAccessory]
+            };
+            const mockTradfri = {
+                devices: {
+                    'device1': mockDevice
+                }
+            };
+            setStateValue('tradfri', mockTradfri);
+            setStateValue('currentDeviceState', 'OFF'); // Device is OFF
+
+            await turnIkeaDevice('ON', 'device1');
+
+            expect(mockAccessory.turnOn).toHaveBeenCalled();
+            expect(mockAccessory.turnOff).not.toHaveBeenCalled();
+            expect(getCurrentDeviceState()).toBe('ON');
+        });
+
+        it('should turn off device when current state is ON', async () => {
+            const mockAccessory = {
+                client: null,
+                turnOn: jest.fn(),
+                turnOff: jest.fn()
+            };
+            const mockDevice = {
+                name: 'Test Device',
+                plugList: [mockAccessory]
+            };
+            const mockTradfri = {
+                devices: {
+                    'device1': mockDevice
+                }
+            };
+            setStateValue('tradfri', mockTradfri);
+            setStateValue('currentDeviceState', 'ON'); // Device is ON
+
+            await turnIkeaDevice('OFF', 'device1');
+
+            expect(mockAccessory.turnOff).toHaveBeenCalled();
+            expect(mockAccessory.turnOn).not.toHaveBeenCalled();
+            expect(getCurrentDeviceState()).toBe('OFF');
+        });
+
+        it('should turn on device when current state is null (unknown)', async () => {
+            const mockAccessory = {
+                client: null,
+                turnOn: jest.fn(),
+                turnOff: jest.fn()
+            };
+            const mockDevice = {
+                name: 'Test Device',
+                plugList: [mockAccessory]
+            };
+            const mockTradfri = {
+                devices: {
+                    'device1': mockDevice
+                }
+            };
+            setStateValue('tradfri', mockTradfri);
+            setStateValue('currentDeviceState', null); // State unknown
+
+            await turnIkeaDevice('ON', 'device1');
+
+            expect(mockAccessory.turnOn).toHaveBeenCalled();
+            expect(mockAccessory.turnOff).not.toHaveBeenCalled();
+            expect(getCurrentDeviceState()).toBe('ON');
+        });
+    });
+
+    describe('Device State Management', () => {
+        it('should get current device state', () => {
+            setStateValue('currentDeviceState', 'ON');
+            expect(getCurrentDeviceState()).toBe('ON');
+        });
+
+        it('should set device state to ON', () => {
+            setCurrentDeviceState('ON');
+            expect(getCurrentDeviceState()).toBe('ON');
+        });
+
+        it('should set device state to OFF', () => {
+            setCurrentDeviceState('OFF');
+            expect(getCurrentDeviceState()).toBe('OFF');
+        });
+
+        it('should set device state to null', () => {
+            setCurrentDeviceState(null);
+            expect(getCurrentDeviceState()).toBeNull();
+        });
+
+        it('should not set invalid state', () => {
+            // Invalid states should not be set
+            setCurrentDeviceState('INVALID');
+            // State should remain unchanged (null by default)
+            expect(getCurrentDeviceState()).not.toBe('INVALID');
+            expect(getCurrentDeviceState()).toBeNull();
         });
     });
 });
